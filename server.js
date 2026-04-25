@@ -126,6 +126,10 @@ async function generateTTS(text, voiceOverride) {
 }
 
 let audioSeq = 0;
+// Epoch increments every time we clear audio — any in-flight speakNarration
+// captures the epoch at start and aborts if it changes (i.e., a new phase
+// has begun and the old narration is stale).
+let narrationEpoch = 0;
 
 // Split into rough sentences for faster first-audio.
 // Keeps short fragments together; merges <40-char tail into previous chunk.
@@ -149,13 +153,16 @@ async function speakNarration(text, label = 'narration') {
   if (!ai) return;
   const chunks = splitForTTS(text);
   if (chunks.length === 0) return;
+  const myEpoch = narrationEpoch;
   // Fire all TTS calls in parallel; emit each in order as it resolves so
-  // first sentence plays as soon as it's ready (~2s) instead of waiting
-  // for the full-text TTS to come back.
+  // first sentence plays as soon as it's ready. If clearAudio() runs while
+  // we're awaiting, the epoch advances and we drop everything that's
+  // still pending so it doesn't play over the next slide.
   const promises = chunks.map((c) => generateTTS(c));
   for (const p of promises) {
     try {
       const audio = await p;
+      if (narrationEpoch !== myEpoch) return; // stale: a new phase took over
       if (audio) {
         io.emit('audio:play', {
           id: ++audioSeq,
@@ -171,8 +178,9 @@ async function speakNarration(text, label = 'narration') {
 }
 
 function clearAudio() {
+  narrationEpoch++; // invalidate any in-flight speakNarration so its
+                    // remaining chunks don't bleed into the next phase.
   io.emit('audio:clear', {});
-  // Reset audio-finished tracking so a stale signal can't auto-advance.
   audioFinishedSeen = false;
 }
 
