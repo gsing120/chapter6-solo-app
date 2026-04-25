@@ -1,33 +1,29 @@
 #!/usr/bin/env bash
-# Run this on a fresh Debian/Ubuntu GCP VM as your normal user (not root).
+# Run this on a fresh Debian/Ubuntu GCP VM, FROM INSIDE the cloned repo.
 # Usage:
-#   bash gcp-setup.sh <github-repo-url> <gemini-api-key>
-# Example:
-#   bash gcp-setup.sh https://github.com/me/chapter6-solo-app.git AIza...
+#   bash gcp-setup.sh <gemini-api-key>
 set -euo pipefail
 
-REPO_URL="${1:-}"
-GEMINI_KEY="${2:-}"
-
-if [[ -z "$REPO_URL" || -z "$GEMINI_KEY" ]]; then
-  echo "Usage: bash gcp-setup.sh <github-repo-url> <gemini-api-key>"
+GEMINI_KEY="${1:-}"
+if [[ -z "$GEMINI_KEY" ]]; then
+  echo "Usage: bash gcp-setup.sh <gemini-api-key>"
+  echo "Example: bash gcp-setup.sh AIzaSy..."
   exit 1
 fi
 
 USER_NAME="$(whoami)"
-APP_DIR="$HOME/chapter6-solo-app"
+APP_DIR="$(pwd)"
 
-echo "==> Installing Node.js 20 and git"
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs git
-
-echo "==> Cloning repo to $APP_DIR"
-if [[ -d "$APP_DIR" ]]; then
-  cd "$APP_DIR" && git pull
-else
-  git clone "$REPO_URL" "$APP_DIR"
+if [[ ! -f "$APP_DIR/server.js" ]]; then
+  echo "Error: run this from inside the chapter6-solo-app directory."
+  exit 1
 fi
-cd "$APP_DIR"
+
+echo "==> Installing Node.js 20"
+if ! command -v node >/dev/null || [[ "$(node -v | cut -dv -f2 | cut -d. -f1)" -lt 20 ]]; then
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+fi
 
 echo "==> Installing npm deps"
 npm install --omit=dev
@@ -42,7 +38,7 @@ PORT=3000
 EOF
 chmod 600 "$APP_DIR/.env"
 
-echo "==> Creating systemd service: chapter6.service"
+echo "==> Creating systemd service"
 sudo tee /etc/systemd/system/chapter6.service >/dev/null <<EOF
 [Unit]
 Description=Chapter 6 Solo App
@@ -69,7 +65,8 @@ sleep 2
 sudo systemctl --no-pager status chapter6 || true
 
 echo
-echo "==> Done. App should be live on port 3000."
-echo "    External IP: $(curl -fsS ifconfig.me 2>/dev/null || echo 'unknown')"
-echo "    Test locally on the VM:  curl -s http://localhost:3000/healthz"
-echo "    Logs:                    sudo journalctl -u chapter6 -f"
+echo "==> Done. App listening on port 3000."
+EXTERNAL_IP="$(curl -fsS ifconfig.me 2>/dev/null || echo 'unknown')"
+echo "    External IP: $EXTERNAL_IP"
+echo "    Local check: curl -s http://localhost:3000/healthz"
+echo "    Live logs:   sudo journalctl -u chapter6 -f"
