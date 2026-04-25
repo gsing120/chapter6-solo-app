@@ -168,6 +168,19 @@ body.presenter.qr-on .p-stage > * {
 }
 .chat-strip input:focus { outline: none; border-color: var(--teal); }
 .chat-strip .btn { border-radius: 999px; padding: 10px 18px; }
+.voice-select {
+  padding: 9px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  max-width: 240px;
+}
+.voice-select:focus { outline: none; border-color: var(--teal); }
+.voice-select option { background: var(--bg-deep); color: var(--text-primary); }
 
 /* ─── Lobby ──────────────────────────────────────────────────── */
 .lobby {

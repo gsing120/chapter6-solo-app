@@ -54,6 +54,41 @@ chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
 });
 
+/* ─── Voice dropdown ────────────────────────────────────────── */
+const voiceSelect = $('voiceSelect');
+async function loadVoices() {
+  try {
+    const r = await fetch('/api/voices').then((x) => x.json());
+    voiceSelect.innerHTML = '';
+    const groups = [
+      { label: 'Male voices', voices: r.voices.male || [] },
+      { label: 'Female voices', voices: r.voices.female || [] },
+    ];
+    for (const g of groups) {
+      const og = document.createElement('optgroup');
+      og.label = g.label;
+      for (const v of g.voices) {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = v.label;
+        if (v.id === r.current) opt.selected = true;
+        og.appendChild(opt);
+      }
+      voiceSelect.appendChild(og);
+    }
+  } catch (err) {
+    voiceSelect.innerHTML = '<option>(failed to load)</option>';
+  }
+}
+loadVoices();
+voiceSelect.onchange = () => {
+  unlockAudio();
+  socket.emit('presenter:set-voice', { voice: voiceSelect.value });
+};
+socket.on('voice:changed', ({ voice }) => {
+  if (voiceSelect.value !== voice) voiceSelect.value = voice;
+});
+
 function sendChat() {
   const q = chatInput.value.trim();
   if (q.length < 2) return;

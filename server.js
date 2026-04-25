@@ -25,10 +25,52 @@ app.get('/healthz', (req, res) => res.json({ ok: true, phase: state?.phase || 's
 /* ─── Gemini 3 Flash (text) + Gemini 2.5 Flash TTS (voice) ──── */
 const MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 const TTS_MODEL = process.env.GEMINI_TTS_MODEL || 'gemini-2.5-flash-preview-tts';
-const TTS_VOICE = process.env.GEMINI_TTS_VOICE || 'Kore';
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
+
+// Available voices, presenter-changeable at runtime via dropdown
+const VOICES = {
+  male: [
+    { id: 'Algieba', label: 'Algieba — smooth' },
+    { id: 'Enceladus', label: 'Enceladus — breathy' },
+    { id: 'Algenib', label: 'Algenib — gravelly / deep' },
+    { id: 'Umbriel', label: 'Umbriel — easy-going' },
+    { id: 'Charon', label: 'Charon — informative' },
+    { id: 'Iapetus', label: 'Iapetus — clear' },
+    { id: 'Achird', label: 'Achird — friendly' },
+    { id: 'Schedar', label: 'Schedar — even' },
+    { id: 'Sadaltager', label: 'Sadaltager — knowledgeable' },
+    { id: 'Orus', label: 'Orus — firm' },
+    { id: 'Alnilam', label: 'Alnilam — firm' },
+    { id: 'Fenrir', label: 'Fenrir — excitable' },
+    { id: 'Puck', label: 'Puck — upbeat' },
+    { id: 'Rasalgethi', label: 'Rasalgethi — informative' },
+    { id: 'Sadachbia', label: 'Sadachbia — lively' },
+    { id: 'Zubenelgenubi', label: 'Zubenelgenubi — casual' },
+  ],
+  female: [
+    { id: 'Kore', label: 'Kore — firm' },
+    { id: 'Zephyr', label: 'Zephyr — bright' },
+    { id: 'Leda', label: 'Leda — youthful' },
+    { id: 'Aoede', label: 'Aoede — breezy' },
+    { id: 'Callirrhoe', label: 'Callirrhoe — easy-going' },
+    { id: 'Autonoe', label: 'Autonoe — bright' },
+    { id: 'Despina', label: 'Despina — smooth' },
+    { id: 'Erinome', label: 'Erinome — clear' },
+    { id: 'Laomedeia', label: 'Laomedeia — upbeat' },
+    { id: 'Achernar', label: 'Achernar — soft' },
+    { id: 'Gacrux', label: 'Gacrux — mature' },
+    { id: 'Pulcherrima', label: 'Pulcherrima — forward' },
+    { id: 'Vindemiatrix', label: 'Vindemiatrix — gentle' },
+    { id: 'Sulafat', label: 'Sulafat — warm' },
+  ],
+};
+const ALL_VOICE_IDS = new Set(
+  [...VOICES.male, ...VOICES.female].map((v) => v.id)
+);
+let currentVoice = process.env.GEMINI_TTS_VOICE || 'Algieba';
+if (!ALL_VOICE_IDS.has(currentVoice)) currentVoice = 'Algieba';
 
 /* PCM → WAV wrapper (Gemini TTS returns L16 PCM @ 24kHz, we add RIFF header) */
 function pcmToWav(pcm, sampleRate = 24000, channels = 1, bits = 16) {
@@ -52,10 +94,11 @@ function pcmToWav(pcm, sampleRate = 24000, channels = 1, bits = 16) {
   return Buffer.concat([header, pcm]);
 }
 
-async function generateTTS(text) {
+async function generateTTS(text, voiceOverride) {
   if (!ai) return null;
   const clean = String(text || '').trim();
   if (!clean) return null;
+  const voice = voiceOverride || currentVoice;
   try {
     const result = await ai.models.generateContent({
       model: TTS_MODEL,
@@ -63,7 +106,7 @@ async function generateTTS(text) {
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
         },
       },
     });
@@ -489,7 +532,9 @@ function advanceCT(nextSub) {
   if (nextSub.startsWith('ct_q')) {
     const qIndex = parseInt(nextSub.slice(-1), 10) - 1;
     const q = PHASE1.questions[qIndex];
+    clearAudio();
     io.emit('ct:question', { id: q.id, text: q.text, index: qIndex });
+    speakNarration(`Guiding question ${qIndex + 1}. ${q.text}`, `ct_q${qIndex + 1}`);
     startTimer(nextSub, TIMERS[nextSub], () => {
       const nextIdx = qIndex + 1;
       if (nextIdx < PHASE1.questions.length) advanceCT(`ct_q${nextIdx + 1}`);
@@ -650,12 +695,17 @@ function startMVFStatement(index) {
   state.mvf.votes[stmt.id] = { MYTH: [], FACT: [] };
   state.mvf.votedBy[stmt.id] = new Set();
   broadcastState();
+  clearAudio();
   io.emit('mvf:statement', {
     id: stmt.id,
     text: stmt.text,
     index,
     total: PHASE2.statements.length,
   });
+  speakNarration(
+    `Statement ${index + 1} of ${PHASE2.statements.length}. ${stmt.text}. Myth or fact?`,
+    `mvf_statement_${stmt.id}`
+  );
   startTimer('mvf_vote', TIMERS.mvf_vote, () => revealMVF(index));
 }
 
@@ -747,7 +797,12 @@ function enterPriorityPyramid() {
     startNarrationWait(() => {
       state.subPhase = 'pyramid_setup';
       broadcastState();
+      clearAudio();
       io.emit('pyramid:setup', { interventions: PHASE3.interventions });
+      speakNarration(
+        "Welcome to the Priority Pyramid. You will now individually rank ten nursing interventions for older adult care from highest to lowest priority. Tap each card on your phone to place it in your pyramid. Number one is the most important. Submit when all ten are placed. There is an emancipatory bonus for those who recognize that sexual health belongs near the top of the pyramid, not buried at the bottom. You'll have four minutes once sorting begins.",
+        'pyramid_intro'
+      );
       startTimer('pyramid_setup', TIMERS.pyramid_setup, () => {
       state.subPhase = 'pyramid_sort';
       broadcastState();
@@ -1045,6 +1100,9 @@ app.get('/presenter', (req, res) =>
 );
 
 app.get('/api/state', (req, res) => res.json(publicState()));
+app.get('/api/voices', (req, res) =>
+  res.json({ voices: VOICES, current: currentVoice })
+);
 
 /* ─── Socket.io ─────────────────────────────────────────────── */
 io.on('connection', (socket) => {
@@ -1091,6 +1149,29 @@ io.on('connection', (socket) => {
     socket.on('presenter:chat', ({ question }) => answerSingleAdHoc(question));
     socket.on('presenter:answer-now', () => {
       flushChatQueue();
+    });
+
+    socket.on('presenter:set-voice', async ({ voice }) => {
+      if (!ALL_VOICE_IDS.has(voice)) return;
+      currentVoice = voice;
+      io.emit('voice:changed', { voice });
+      // Speak a short sample in the new voice immediately so the presenter
+      // can hear it.
+      try {
+        const audio = await generateTTS(
+          `This is the ${voice} voice. Ready when you are.`,
+          voice
+        );
+        if (audio) {
+          io.emit('audio:clear', {});
+          io.emit('audio:play', {
+            id: ++audioSeq,
+            label: 'voice_sample',
+            audioBase64: audio.base64,
+            mime: audio.mime,
+          });
+        }
+      } catch (e) { /* best-effort sample */ }
     });
 
     socket.on('presenter:joke', async () => {
