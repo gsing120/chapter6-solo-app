@@ -1,0 +1,376 @@
+/* ═══════════════════════════════════════════════════════════
+   Student view — mobile-first
+   ═══════════════════════════════════════════════════════════ */
+
+body.student {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.student-shell {
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.s-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.s-header .brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+.s-header .who {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+.s-header .who b { color: var(--teal); }
+
+/* ─── Join screen ──────────────────────────────────────────── */
+.join-card {
+  padding: 28px 22px;
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.join-card h1 {
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+.join-card p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.join-card label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+.join-card input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+.join-card input:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+.s-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.s-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.3;
+}
+.s-card .hint {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.s-card textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+.s-card textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+.scenario-readonly {
+  padding: 18px;
+  background: rgba(0, 245, 212, 0.05);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ─── Timer (student) ──────────────────────────────────────── */
+.s-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+}
+.s-timer .t-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+.s-timer .t-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── MVF vote buttons ─────────────────────────────────────── */
+.mvf-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.mvf-btn {
+  padding: 22px 16px;
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  color: var(--bg-deep);
+}
+.mvf-btn.myth { background: var(--teal); }
+.mvf-btn.fact { background: var(--magenta); color: white; }
+.mvf-btn:active { transform: scale(0.96); }
+.mvf-btn.selected {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+.mvf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.mvf-result {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+.mvf-result.correct { background: rgba(52, 211, 153, 0.2); color: var(--green); border: 1px solid var(--green); }
+.mvf-result.wrong { background: rgba(255, 107, 107, 0.2); color: var(--coral); border: 1px solid var(--coral); }
+
+/* ─── Pyramid (student) ────────────────────────────────────── */
+.pyramid-visual {
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.pyr-tier {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  justify-content: center;
+}
+.pyr-cell {
+  flex: 1;
+  max-width: 80px;
+  min-height: 44px;
+  padding: 4px;
+  background: var(--bg-deep);
+  border: 1px dashed var(--glass-border);
+  border-radius: 6px;
+  font-size: 0.62rem;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.pyr-cell.filled {
+  background: var(--glass-bg);
+  border: 1px solid var(--teal);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.pyr-cell.filled:hover { background: rgba(0,245,212,0.15); }
+
+.pyr-tier-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  align-self: flex-start;
+  margin-left: 8px;
+}
+
+.unranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.unranked-card {
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.unranked-card:hover { background: rgba(255,217,61,0.1); }
+.unranked-card:active { transform: scale(0.98); }
+.unranked-card .card-num {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--gold);
+  color: var(--bg-deep);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-right: 8px;
+}
+
+/* ─── Waiting ──────────────────────────────────────────────── */
+.s-waiting {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+.s-waiting .pulse-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--teal);
+  margin: 0 auto 16px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.s-waiting h3 {
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+/* submission acknowledge */
+.s-ack {
+  text-align: center;
+  padding: 20px;
+  color: var(--green);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* ─── Ask Artificial Nurse ─────────────────────────────────── */
+.ask-fab {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 60;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: none;
+  background: var(--gradient-cool);
+  color: white;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  box-shadow: 0 12px 30px rgba(0, 245, 212, 0.35);
+  cursor: pointer;
+}
+.ask-fab:active { transform: scale(0.94); }
+
+.ask-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 15, 0.85);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+  z-index: 70;
+  backdrop-filter: blur(10px);
+}
+.ask-modal.hidden { display: none; }
+.ask-modal .ask-box {
+  width: 100%;
+  max-width: 500px;
+  padding: 22px;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ask-modal h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--teal);
+}
+.ask-modal textarea {
+  min-height: 90px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-deep);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+.ask-modal textarea:focus { outline: none; border-color: var(--teal); }
+.ask-modal .row { display: flex; gap: 8px; }
+
+/* ─── Queue card (students see the queue) ──────────────────── */
+.q-card {
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.q-card .q-meta {
+  color: var(--teal);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.q-card.answered { border-color: rgba(52, 211, 153, 0.35); }
+.q-card .q-ans {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}

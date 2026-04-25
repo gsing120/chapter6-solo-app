@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#06080f">
+<title>NUR3035 Chapter 6</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/student.css">
+</head>
+<body class="student">
+
+<div class="bg-mesh">
+  <div class="blob"></div><div class="blob"></div><div class="blob"></div>
+</div>
+
+<div class="student-shell">
+
+  <!-- Header (hidden until joined) -->
+  <div class="s-header hidden" id="sHeader">
+    <div class="brand">NUR3035 · Ch. 6</div>
+    <div class="who">
+      <div><b id="whoName">—</b></div>
+      <div style="color:var(--text-dim)"><span id="whoGroup">—</span></div>
+    </div>
+  </div>
+
+  <!-- Join screen -->
+  <div id="joinScreen" class="glass join-card">
+    <span class="seg-badge seg-1">Welcome</span>
+    <h1>Chapter 6 <br>Interactive Classroom</h1>
+    <p>Enter your name and group. Type the same group name as your tablemates — anyone matching will be grouped together. Solo? Use your own name.</p>
+    <div>
+      <label for="nameInput">Your name</label>
+      <input id="nameInput" type="text" placeholder="e.g. Alex" autocomplete="off" maxlength="40">
+    </div>
+    <div>
+      <label for="groupInput">Group name</label>
+      <input id="groupInput" type="text" placeholder="e.g. Table 1" autocomplete="off" maxlength="40">
+    </div>
+    <button id="btnJoin" class="btn btn-xl btn-block">Join</button>
+  </div>
+
+  <!-- Stage (shown after join) -->
+  <div id="sStage" class="hidden"></div>
+</div>
+
+<!-- Ask Artificial Nurse floating action button -->
+<button id="askFab" class="ask-fab hidden" title="Ask Artificial Nurse">?</button>
+
+<!-- Ask modal -->
+<div id="askModal" class="ask-modal hidden">
+  <div class="ask-box">
+    <h3>Ask the Artificial Nurse</h3>
+    <p class="hint">Your question joins the queue. Everyone will see it. The Artificial Nurse answers in batches between phases, or whenever your instructor taps Answer Now.</p>
+    <textarea id="askInput" placeholder="Type your question about Chapter 6…" maxlength="400"></textarea>
+    <div class="row">
+      <button id="askCancel" class="btn btn-ghost" style="flex:1">Cancel</button>
+      <button id="askSend" class="btn" style="flex:2">Ask</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/student.js"></script>
+</body>
+</html>

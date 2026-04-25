@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>NUR3035 — Presenter</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/presenter.css">
+</head>
+<body class="presenter">
+
+<div class="bg-mesh">
+  <div class="blob"></div><div class="blob"></div><div class="blob"></div>
+</div>
+
+<!-- Persistent QR code corner (shown once session starts) -->
+<div id="qrCorner" class="qr-corner hidden-corner">
+  <img id="qrCornerImg" src="" alt="">
+  <div>
+    <div class="qr-label">Scan to join</div>
+    <div class="qr-url" id="qrCornerUrl"></div>
+  </div>
+</div>
+
+<div class="presenter-shell">
+
+  <!-- Header -->
+  <div class="p-header glass">
+    <div>
+      <span id="segBadge" class="seg-badge seg-1">LOBBY</span>
+      <span id="phaseLabel" class="phase-label" style="margin-left:12px">Waiting to start</span>
+      <span id="subLabel" class="sub-label"></span>
+    </div>
+    <div>
+      <span class="student-count"><span id="studentCount">0</span> connected</span>
+      <span style="margin:0 10px;color:var(--text-dim)">·</span>
+      <span style="color:var(--text-secondary)"><span id="groupCount">0</span> groups</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="pMain" class="p-main">
+    <div id="pStage" class="p-stage glass"></div>
+    <div id="pSide" class="p-side glass"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="p-footer glass">
+    <div class="timer-wrap">
+      <div class="timer" id="timerText">--:--</div>
+      <div class="timer-bar" id="timerBarWrap"><div class="timer-bar-fill" id="timerBar" style="width:0%"></div></div>
+    </div>
+    <div class="controls">
+      <button id="btnStart" class="btn btn-xl">Start Presentation</button>
+      <button id="btnJoke" class="btn btn-gold hidden">Joke</button>
+      <button id="btnSkipSub" class="btn btn-ghost hidden">Skip</button>
+      <button id="btnAddTime" class="btn btn-ghost hidden">+30s</button>
+      <button id="btnPause" class="btn btn-ghost hidden">Pause</button>
+      <button id="btnAnswerNow" class="btn btn-gold hidden">Answer Now <span id="queueBadge" class="hidden">0</span></button>
+      <button id="btnNext" class="btn btn-magenta hidden">Next →</button>
+      <button id="btnReset" class="btn btn-ghost">Reset</button>
+    </div>
+    <div class="chat-strip">
+      <input id="chatInput" type="text" placeholder="Ask the Artificial Nurse a question about Chapter 6…" maxlength="500">
+      <button id="chatSend" class="btn">Ask</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/presenter.js"></script>
+</body>
+</html>
