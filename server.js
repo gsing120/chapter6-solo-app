@@ -1006,14 +1006,20 @@ function getLocalIP() {
 
 app.get('/qrcode', async (req, res) => {
   // Priority: explicit ?host=, PUBLIC_URL env (set on cloud), then forwarded
-  // host from the proxy, then local LAN IP for dev.
+  // host from the proxy, then the raw request Host header, then local LAN.
   let host = req.query.host || process.env.PUBLIC_URL;
   if (!host) {
     const fwdProto = req.headers['x-forwarded-proto'];
     const fwdHost = req.headers['x-forwarded-host'] || req.headers.host;
-    if (fwdHost && /[a-z]/i.test(fwdHost) && !fwdHost.startsWith('localhost')) {
-      // Behind a real domain (cloud or tunneled) — use it as-is with the
-      // protocol the client actually used.
+    const isLocal =
+      !fwdHost ||
+      fwdHost.startsWith('localhost') ||
+      fwdHost.startsWith('127.') ||
+      fwdHost.startsWith('10.') ||
+      fwdHost.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(fwdHost);
+    if (fwdHost && !isLocal) {
+      // Cloud / public domain or public IP — use it as-is.
       host = `${fwdProto || req.protocol}://${fwdHost}`;
     } else {
       host = `http://${getLocalIP()}:${process.env.PORT || 3000}`;
