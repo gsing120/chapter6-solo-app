@@ -222,7 +222,7 @@ async function callGemini(prompt, fallbackText, timeoutMs = 14000) {
 // Gameplay timers (real countdowns).
 // AI narration / scoreboard / joke phases use narrationWait instead.
 const TIMERS = {
-  ct_scenario: 60,
+  ct_scenario: 120,
   ct_q1: 120,
   ct_q2: 120,
   ct_q3: 120,
@@ -476,7 +476,10 @@ function enterCriticalThinking() {
   state.phase = 'CRITICAL_THINKING';
   state.subPhase = 'ct_scenario';
   broadcastState();
+  clearAudio();
   io.emit('ct:scenario', { scenario: PHASE1.scenario });
+  // Have the Artificial Nurse read the scenario aloud
+  speakNarration(PHASE1.scenario, 'ct_scenario');
   startTimer('ct_scenario', TIMERS.ct_scenario, () => advanceCT('ct_q1'));
 }
 
