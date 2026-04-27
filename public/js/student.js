@@ -239,12 +239,12 @@ socket.on('ct:scenario', ({ scenario }) => {
   `;
 });
 
-socket.on('ct:question', ({ id, text, index }) => {
-  ctCurrent = { id, text, index };
+socket.on('ct:question', ({ id, text, index, total }) => {
+  ctCurrent = { id, text, index, total: total || 2 };
   const already = ctSubmittedIds.has(id);
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-1">Guiding Q${index + 1} of 3</span>
+      <span class="seg-badge seg-1">Guiding Q${index + 1} of ${ctCurrent.total}</span>
       <details class="scenario-readonly" style="font-size:0.78rem;color:var(--text-dim)">
         <summary style="cursor:pointer;color:var(--teal)">View scenario</summary>
         <div style="margin-top:8px">${escapeHtml(cachedScenario)}</div>

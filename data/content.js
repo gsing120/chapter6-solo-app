@@ -14,21 +14,18 @@ const PHASE1 = {
 Context the report does not say out loud: in BC's 2021 heat dome, 619 people died. The majority were older adults. Most were found alone, inside their own apartments, without air conditioning. Some had received the public advisory and could not act on it — a fixed income, a fourth-floor walk-up, no fan, no one to call. Others never saw the advisory at all.
 
 You are the public-health nurse on call as the warning is issued.`,
+  // Textbook CT Q3 has exactly two sub-prompts: (a) and (b).
+  // Mapping: ct_q1 = textbook (a); ct_q2 = textbook (b) with emancipatory framing.
   questions: [
     {
       id: 'ct_q1',
       text:
-        'The Island Health release advises water, AC, cooling centres, and checking on neighbours. Identify at least THREE specific groups of older adults who are MOST AT RISK of falling through the cracks of this advice — people the report names but does not actually reach. For each group, explain WHY the standard advice does not land. Avoid one-word answers — give clinical and social reasoning.',
+        "Textbook Q3 (a): Although the Island Health release gives advice on preventing hyperthermia, do you think it reaches the most at-risk older adults? Identify at least TWO specific at-risk groups, explain WHY the standard advice does not land for them, and describe concretely what could be done to mitigate this gap. Avoid one-word answers — give clinical and social reasoning.",
     },
     {
       id: 'ct_q2',
       text:
-        "Pick ONE of the at-risk groups you named in Q1. Describe TWO concrete, specific actions a nurse can take BEFORE a heat warning hits, and TWO actions DURING an active heat event, to reach that group. Be specific — what would you actually do, who would you call, what would you say? Don't list 'educate the patient' — say what you'd actually educate, how, and why.",
-    },
-    {
-      id: 'ct_q3',
-      text:
-        "Critique the Island Health response through an EMANCIPATORY lens. Top-down public health messaging assumes everyone has equal access to act on the advice. What's missing? How would you redesign the response so older adults' autonomy, lived experience, and social context — not just compliance — sit at the centre? Name at least one structural change AND one relational change you'd advocate for.",
+        "Textbook Q3 (b): Through an EMANCIPATORY lens — collaborating WITH older adults rather than dictating TO them — how can nurses take an active role in addressing this crisis? Describe at least TWO concrete actions BEFORE a heat warning hits, and TWO actions DURING an active heat event. Be specific — what would you actually do, who would you call, what would you say?",
     },
   ],
   fallbackSummary:

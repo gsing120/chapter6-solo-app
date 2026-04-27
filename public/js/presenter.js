@@ -317,11 +317,12 @@ socket.on('ct:scenario', ({ scenario }) => {
   `;
 });
 
-socket.on('ct:question', ({ id, text, index }) => {
+socket.on('ct:question', ({ id, text, index, total }) => {
   currentCTQId = id;
+  const totalQ = total || 2;
   stage.innerHTML = `
     <div class="question-card">
-      <div class="q-label">Guiding Question ${index + 1} of 3</div>
+      <div class="q-label">Guiding Question ${index + 1} of ${totalQ}</div>
       <div class="q-text">${escapeHtml(text)}</div>
     </div>
   `;

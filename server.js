@@ -355,8 +355,8 @@ const state = {
   socketToClient: {},
 
   ct: {
-    answers: { ct_q1: [], ct_q2: [], ct_q3: [] },
-    submittedBy: { ct_q1: new Set(), ct_q2: new Set(), ct_q3: new Set() }, // clientIds
+    answers: Object.fromEntries(PHASE1.questions.map((q) => [q.id, []])),
+    submittedBy: Object.fromEntries(PHASE1.questions.map((q) => [q.id, new Set()])), // clientIds
     aiSummary: null,
   },
 
@@ -437,8 +437,8 @@ function resetSessionState() {
   state.subPhase = null;
   state.history = [];
   state.ct = {
-    answers: { ct_q1: [], ct_q2: [], ct_q3: [] },
-    submittedBy: { ct_q1: new Set(), ct_q2: new Set(), ct_q3: new Set() },
+    answers: Object.fromEntries(PHASE1.questions.map((q) => [q.id, []])),
+    submittedBy: Object.fromEntries(PHASE1.questions.map((q) => [q.id, new Set()])),
     aiSummary: null,
   };
   state.mvf = {
@@ -654,9 +654,17 @@ function goBack() {
       enterCriticalThinking();
       return;
     }
-    if (sp === 'ct_q2') return advanceCT('ct_q1');
-    if (sp === 'ct_q3') return advanceCT('ct_q2');
-    if (sp && sp.startsWith('ct_ai')) return advanceCT('ct_q3');
+    // Generic back-step through guiding questions
+    const ctMatch = sp && /^ct_q(\d+)$/.exec(sp);
+    if (ctMatch) {
+      const idx = parseInt(ctMatch[1], 10);
+      if (idx > 1) return advanceCT(`ct_q${idx - 1}`);
+      return enterCriticalThinking();
+    }
+    if (sp && sp.startsWith('ct_ai')) {
+      const lastQ = `ct_q${PHASE1.questions.length}`;
+      return advanceCT(lastQ);
+    }
     if (sp === 'ct_scoreboard') {
       // Roll back into the AI summary screen
       runCTAISummary();
@@ -736,7 +744,7 @@ function advanceCT(nextSub) {
     // via the Back button)
     state.ct.answers[nextSub] = [];
     state.ct.submittedBy[nextSub] = new Set();
-    io.emit('ct:question', { id: q.id, text: q.text, index: qIndex });
+    io.emit('ct:question', { id: q.id, text: q.text, index: qIndex, total: PHASE1.questions.length });
     // No TTS — students read on their phone, presenter reads to the room.
     startTimer(nextSub, TIMERS[nextSub], () => {
       const nextIdx = qIndex + 1;
@@ -754,27 +762,26 @@ async function runCTAISummary() {
   broadcastState();
   io.emit('ct:processing', {});
 
-  const allNames = [
-    ...state.ct.answers.ct_q1,
-    ...state.ct.answers.ct_q2,
-    ...state.ct.answers.ct_q3,
-  ]
+  const allAnswers = PHASE1.questions.flatMap((q) => state.ct.answers[q.id] || []);
+  const allNames = allAnswers
     .map((a) => a.name)
     .filter((v, i, arr) => arr.indexOf(v) === i);
+
+  const responseBlocks = PHASE1.questions
+    .map((q, i) => {
+      const ansList = (state.ct.answers[q.id] || [])
+        .map((a) => `- [${a.name}] ${a.text}`)
+        .join('\n') || '(none)';
+      return `Q${i + 1} (${q.text}):\n${ansList}`;
+    })
+    .join('\n\n');
 
   const prompt = `You are the ARTIFICIAL NURSE — a sassy, warm nursing educator analyzing student responses to textbook Critical Thinking Question 3 (BC heat warnings, at-risk older adults).
 
 SCENARIO: ${PHASE1.scenario}
 
 STUDENT RESPONSES (names in brackets are the ONLY names you may reference):
-Q1 (${PHASE1.questions[0].text}):
-${state.ct.answers.ct_q1.map((a) => `- [${a.name}] ${a.text}`).join('\n') || '(none)'}
-
-Q2 (${PHASE1.questions[1].text}):
-${state.ct.answers.ct_q2.map((a) => `- [${a.name}] ${a.text}`).join('\n') || '(none)'}
-
-Q3 (${PHASE1.questions[2].text}):
-${state.ct.answers.ct_q3.map((a) => `- [${a.name}] ${a.text}`).join('\n') || '(none)'}
+${responseBlocks}
 
 Ignore troll or empty responses. Write a 4-6 sentence live-classroom summary that:
 1. Groups responses by common themes — you MAY name-drop 1-2 students IF AND ONLY IF their name appears in the list above
@@ -820,11 +827,9 @@ function pushScoresToAllStudents() {
 async function gradeCTResponses() {
   if (!ai) return;
   const allItems = [];
-  for (const qid of ['ct_q1', 'ct_q2', 'ct_q3']) {
-    const qIdx = parseInt(qid.slice(-1), 10) - 1;
-    const qText = PHASE1.questions[qIdx].text;
-    for (const r of state.ct.answers[qid]) {
-      allItems.push({ qid, qText, name: r.name, text: r.text });
+  for (const q of PHASE1.questions) {
+    for (const r of state.ct.answers[q.id] || []) {
+      allItems.push({ qid: q.id, qText: q.text, name: r.name, text: r.text });
     }
   }
   if (allItems.length === 0) return;
@@ -1548,7 +1553,7 @@ io.on('connection', (socket) => {
 
     socket.on('student:ct-answer', ({ questionId, answer }) => {
       if (state.phase !== 'CRITICAL_THINKING') return;
-      if (!['ct_q1', 'ct_q2', 'ct_q3'].includes(questionId)) return;
+      if (!PHASE1.questions.some((q) => q.id === questionId)) return;
       if (state.subPhase !== questionId) return;
 
       const cid = state.socketToClient[socket.id];
