@@ -23,6 +23,7 @@ const btnSkipSub = $('btnSkipSub');
 const btnAddTime = $('btnAddTime');
 const btnPause = $('btnPause');
 const btnNext = $('btnNext');
+const btnBack = $('btnBack');
 const btnReset = $('btnReset');
 const btnAnswerNow = $('btnAnswerNow');
 const queueBadge = $('queueBadge');
@@ -48,6 +49,7 @@ btnNext.onclick = () => socket.emit('presenter:next');
 btnReset.onclick = () => {
   if (confirm('Reset the entire session?')) socket.emit('presenter:reset');
 };
+btnBack.onclick = () => socket.emit('presenter:back');
 btnAnswerNow.onclick = () => socket.emit('presenter:answer-now');
 chatSend.onclick = sendChat;
 chatInput.addEventListener('keydown', (e) => {
@@ -139,19 +141,16 @@ socket.on('reset', () => {
 });
 
 function applyPhase(s) {
+  const live = s.phase !== 'LOBBY' && s.phase !== 'COMPLETE';
   btnStart.classList.toggle('hidden', s.phase !== 'LOBBY');
-  btnJoke.classList.toggle('hidden', s.phase === 'LOBBY' || s.phase === 'COMPLETE');
-  btnSkipSub.classList.toggle('hidden', s.phase === 'LOBBY' || s.phase === 'COMPLETE');
-  btnAddTime.classList.toggle('hidden', s.phase === 'LOBBY' || s.phase === 'COMPLETE');
-  btnPause.classList.toggle('hidden', s.phase === 'LOBBY' || s.phase === 'COMPLETE');
-  btnNext.classList.toggle(
-    'hidden',
-    !(
-      (s.phase === 'CRITICAL_THINKING' && (s.subPhase === 'ct_ai' || s.subPhase === 'ct_scoreboard')) ||
-      (s.phase === 'MYTH_VS_FACT' && (s.subPhase === 'mvf_summary' || s.subPhase === 'mvf_scoreboard')) ||
-      (s.phase === 'PRIORITY_PYRAMID' && (s.subPhase === 'pyramid_ai' || s.subPhase === 'pyramid_scoreboard'))
-    )
-  );
+  btnJoke.classList.toggle('hidden', !live);
+  btnBack.classList.toggle('hidden', !live);
+  btnSkipSub.classList.toggle('hidden', !live);
+  btnAddTime.classList.toggle('hidden', !live);
+  btnPause.classList.toggle('hidden', !live);
+  // Next is always visible while live — clicking it always advances something
+  // (a narration wait, a pending advance, a running timer, or a phase-end).
+  btnNext.classList.toggle('hidden', !live);
 
   // Show/hide QR corner + reserve stage padding when it's visible
   const qrOn = !(s.phase === 'LOBBY' || s.phase === 'COMPLETE');
@@ -204,20 +203,26 @@ function subPhaseLabel(sp) {
     ct_q1: 'Guiding Q1',
     ct_q2: 'Guiding Q2',
     ct_q3: 'Guiding Q3',
-    ct_ai_processing: 'Analyzing…',
-    ct_ai: 'AI Summary',
+    ct_ai_processing: 'Analyzing',
+    ct_ai: 'Class Summary',
     ct_scoreboard: 'Scoreboard',
+    mvf_intro: 'Intro',
     mvf_vote: 'Voting',
     mvf_reveal: 'Reveal',
-    mvf_summary_processing: 'Wrapping up…',
+    mvf_summary_processing: 'Analyzing',
     mvf_summary: 'Final Summary',
     mvf_scoreboard: 'Scoreboard',
-    pyramid_setup: 'Setup',
-    pyramid_sort: 'Students ranking…',
-    pyramid_display: 'Submissions',
-    pyramid_ai_processing: 'Analyzing…',
-    pyramid_ai: 'AI Analysis',
+    pyramid_intro: 'Intro',
+    pyramid_setup_a: 'Part 1 · Setup',
+    pyramid_sort_a: 'Part 1 · Ranking',
+    pyramid_display_a: 'Part 1 · Submissions',
+    pyramid_setup_b: 'Part 2 · Setup',
+    pyramid_sort_b: 'Part 2 · Ranking',
+    pyramid_display_b: 'Part 2 · Submissions',
+    pyramid_ai_processing: 'Analyzing',
+    pyramid_ai: 'Analysis',
     pyramid_scoreboard: 'Scoreboard',
+    closing_takeaways: 'Key Takeaways',
   };
   return map[sp] || sp;
 }
@@ -315,7 +320,7 @@ function renderCTSide(qid) {
 socket.on('ct:processing', () => {
   stage.innerHTML = `
     <div class="ai-summary">
-      <div class="ai-badge"><span class="dot"></span> Artificial Nurse is thinking…</div>
+      <div class="ai-badge"><span class="dot"></span> Analyzing</div>
       <div class="ai-text" style="color:var(--text-dim)">Grouping responses by theme, checking clinical reasoning, tying to emancipatory nursing.</div>
     </div>
   `;
@@ -374,7 +379,7 @@ socket.on('mvf:roast', ({ id, roast }) => {
 socket.on('mvf:processing', () => {
   stage.innerHTML = `
     <div class="ai-summary">
-      <div class="ai-badge"><span class="dot"></span> Wrapping up the round…</div>
+      <div class="ai-badge"><span class="dot"></span> Analyzing</div>
     </div>
   `;
 });
@@ -450,19 +455,22 @@ function updateVoteBars() {
 let pyramidInterventions = [];
 let pyramidSubmissions = {};
 
-socket.on('pyramid:setup', ({ interventions }) => {
+socket.on('pyramid:setup', ({ interventions, half, currentPart, totalParts }) => {
   pyramidInterventions = interventions;
   pyramidSubmissions = {};
-  renderPyramidTutorial(interventions);
+  renderPyramidTutorial(interventions, { half, currentPart, totalParts });
   side.innerHTML = `<h3 style="color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.14em;font-size:0.85rem">Submissions</h3><p style="color:var(--text-dim)">Waiting for students…</p>`;
 });
 
-function renderPyramidTutorial(interventions) {
+function renderPyramidTutorial(interventions, opts = {}) {
+  const partLabel = opts.currentPart
+    ? `Part ${opts.currentPart} of ${opts.totalParts || 2}`
+    : 'How to play';
   stage.innerHTML = `
     <div class="tutorial">
-      <span class="seg-badge seg-3">How to play · Priority Pyramid</span>
+      <span class="seg-badge seg-3">${escapeHtml(partLabel)} · Priority Pyramid</span>
       <h1>Tap the card, watch it climb the pyramid</h1>
-      <p class="tut-caption">Each student ranks all 10 interventions from #1 (top priority) to #10 (lowest). Tap a card on your phone — it fills the next slot. Tap a placed card to un-rank it. Sort honestly, then hit Submit.</p>
+      <p class="tut-caption">Each student ranks these <b>5 interventions</b> from #1 (top priority) to #5 (lowest in this part). The full pyramid is split into two parts of 5 — you'll do this once for each half. Tap a card on your phone — it fills the next slot. Tap a placed card to un-rank it.</p>
       <div class="tutorial-anim">
         <div class="tut-cards">
           <div class="tut-card" data-tut="1">Assess baseline temperature</div>
@@ -555,7 +563,11 @@ function renderMiniPyramid(who, ranking) {
   const byRank = {};
   ranking.forEach((r) => { byRank[r.rank] = r; });
   const interventionById = Object.fromEntries(pyramidInterventions.map((i) => [i.id, i]));
-  const tierRanks = [[1], [2, 3], [4, 5, 6], [7, 8, 9, 10]];
+  const maxRank = ranking.reduce((m, r) => Math.max(m, r.rank), 0);
+  // 5-item half = 1, 2-3, 4-5; 10-item full = 1, 2-3, 4-5-6, 7-8-9-10
+  const tierRanks = maxRank <= 5
+    ? [[1], [2, 3], [4, 5]]
+    : [[1], [2, 3], [4, 5, 6], [7, 8, 9, 10]];
 
   const tierHtml = tierRanks
     .map(
@@ -586,7 +598,7 @@ function renderMiniPyramid(who, ranking) {
 socket.on('pyramid:processing', () => {
   stage.innerHTML = `
     <div class="ai-summary">
-      <div class="ai-badge"><span class="dot"></span> Analyzing pyramids…</div>
+      <div class="ai-badge"><span class="dot"></span> Analyzing</div>
     </div>
   `;
 });
@@ -712,19 +724,38 @@ socket.on('complete', ({ final, takeaways }) => {
 });
 
 /* ─── Typewriter + voice ─────────────────────────────────── */
-function typewriter(el, text, speed = 10) {
+// Held typewriter: starts immediately if no pending hold, otherwise waits
+// for the first audio chunk to flush.
+function typewriter(el, text, speed = 35) {
+  if (pendingTypewriter) {
+    // Already holding for someone else — replace and let audio fire it.
+    schedulePendingTypewriter(el, text, speed);
+    return;
+  }
+  schedulePendingTypewriter(el, text, speed);
+  // If no audio is expected (TTS off / failed), fall through immediately.
+  // Otherwise the first audio:play flushes the hold.
+}
+
+function typewriterNow(el, text, speed = 35) {
   if (!el) return;
   el.classList.add('typing');
   el.textContent = '';
   let i = 0;
+  let lastScroll = 0;
   const tick = () => {
     if (i >= text.length) {
       el.classList.remove('typing');
       return;
     }
     el.textContent += text[i++];
-    // auto-scroll the stage while typing if near bottom
-    if (stage) stage.scrollTop = stage.scrollHeight;
+    // Auto-scroll: keep the typing cursor in view, but throttle to every
+    // ~120ms so we don't fight the browser layout on long text.
+    const now = performance.now();
+    if (now - lastScroll > 120) {
+      lastScroll = now;
+      if (stage) stage.scrollTop = stage.scrollHeight;
+    }
     setTimeout(tick, speed);
   };
   tick();
@@ -735,6 +766,27 @@ const audioQueue = [];
 let audioPlaying = false;
 let currentAudioEl = null;
 let audioUnlocked = false;
+
+// Pending typewriter — set when text arrives but we want to wait for the
+// first audio chunk so they start in lockstep.
+let pendingTypewriter = null;
+function schedulePendingTypewriter(el, text, speed) {
+  pendingTypewriter = { el, text, speed };
+  // Failsafe: if no audio fires within 6s (TTS down), just type anyway.
+  setTimeout(() => {
+    if (pendingTypewriter && pendingTypewriter.el === el) {
+      const p = pendingTypewriter;
+      pendingTypewriter = null;
+      typewriterNow(p.el, p.text, p.speed);
+    }
+  }, 6000);
+}
+function flushPendingTypewriter() {
+  if (!pendingTypewriter) return;
+  const p = pendingTypewriter;
+  pendingTypewriter = null;
+  typewriterNow(p.el, p.text, p.speed);
+}
 
 function unlockAudio() {
   if (audioUnlocked) return;
@@ -778,6 +830,9 @@ function playNextAudio() {
 }
 
 socket.on('audio:play', (payload) => {
+  // First audio chunk arriving for this narration — release the held
+  // typewriter so visual + audio start together.
+  flushPendingTypewriter();
   audioQueue.push(payload);
   playNextAudio();
 });
@@ -792,13 +847,23 @@ socket.on('audio:clear', () => {
 });
 
 socket.on('narration:waiting', () => {
-  // Surface "waiting for next" hint on the Next button
   btnNext.classList.remove('hidden');
   btnNext.textContent = 'Next →';
   btnNext.classList.add('waiting-pulse');
 });
 socket.on('narration:advanced', () => {
   btnNext.classList.remove('waiting-pulse');
+});
+
+// Server raises this when a gameplay timer hits 0 and is waiting for click.
+socket.on('pending:advance', ({ label }) => {
+  if (label) {
+    btnNext.classList.add('waiting-pulse');
+    btnNext.textContent = "Time's up — Next →";
+  } else {
+    btnNext.classList.remove('waiting-pulse');
+    btnNext.textContent = 'Next →';
+  }
 });
 
 /* speak() retained as a no-op (Gemini TTS now drives all voice) */

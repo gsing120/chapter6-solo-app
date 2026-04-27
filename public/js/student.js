@@ -393,35 +393,36 @@ function renderMVF(s) {
   }
 }
 
-/* ─── PYRAMID (INDIVIDUAL now) ─────────────────────────────── */
+/* ─── PYRAMID (split into 5+5) ───────────────────────────── */
 let pyramidInterventions = [];
 let pyramidRanks = {};
 let pyramidSubmitted = false;
+let pyramidHalf = 'A';
+let pyramidPartCount = 1;
+let pyramidPartTotal = 2;
+const PYRAMID_SIZE = 5;
 
-socket.on('pyramid:setup', ({ interventions }) => {
+socket.on('pyramid:setup', ({ interventions, half, currentPart, totalParts }) => {
   pyramidInterventions = interventions;
   pyramidRanks = {};
   pyramidSubmitted = false;
+  pyramidHalf = half || 'A';
+  pyramidPartCount = currentPart || 1;
+  pyramidPartTotal = totalParts || 2;
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-3">Phase 3 · Priority Pyramid</span>
-      <h2>How it works</h2>
-      <div class="s-waiting">
-        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px">
-          <div class="pyr-cell filled" style="min-width:40px">1</div>
-          <div class="pyr-cell" style="min-width:40px">2</div>
-        </div>
-        <h3 style="color:var(--gold)">Tap cards to rank them</h3>
-      </div>
-      <p class="hint">When sort starts, each card you tap goes into the next slot (#1, then #2, etc.). Tap a placed card to un-rank it. You'll submit YOUR own ranking — this is individual now.</p>
+      <span class="seg-badge seg-3">Phase 3 · Part ${pyramidPartCount} of ${pyramidPartTotal}</span>
+      <h2>Rank these 5 interventions</h2>
+      <p class="hint">When sort starts, each card you tap goes into the next slot (#1, then #2, …). Tap a placed card to un-rank. Five items in this part — pick the priority order.</p>
       ${renderTimerPill()}
     </div>
   `;
 });
 
-socket.on('pyramid:sort', () => {
+socket.on('pyramid:sort', ({ half }) => {
   pyramidRanks = {};
   pyramidSubmitted = false;
+  pyramidHalf = half || pyramidHalf;
   renderPyramidSort();
 });
 
@@ -429,9 +430,9 @@ function renderPyramidSort() {
   if (pyramidSubmitted) {
     stage.innerHTML = `
       <div class="s-card glass">
-        <span class="seg-badge seg-3">Submitted</span>
-        <div class="s-ack">✓ Your pyramid is in! Emancipatory bonus coming…</div>
-        <p class="hint">Watch the front screen — full class results ahead.</p>
+        <span class="seg-badge seg-3">Part ${pyramidPartCount} submitted</span>
+        <div class="s-ack">✓ Your ranking is in!${pyramidPartCount < pyramidPartTotal ? ' Part 2 coming up.' : ''}</div>
+        <p class="hint">Watch the front screen — class results next.</p>
         ${renderTimerPill()}
       </div>
     `;
@@ -443,11 +444,12 @@ function renderPyramidSort() {
   Object.entries(pyramidRanks).forEach(([id, rank]) => { byRank[rank] = parseInt(id, 10); });
   const unranked = pyramidInterventions.filter((iv) => pyramidRanks[iv.id] === undefined);
 
-  const tierRanks = [[1], [2, 3], [4, 5, 6], [7, 8, 9, 10]];
+  // 5-item pyramid: 1, 2-3, 4-5
+  const tierRanks = [[1], [2, 3], [4, 5]];
 
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-3">Rank 1–10 · ${ranksFilled}/10 placed</span>
+      <span class="seg-badge seg-3">Part ${pyramidPartCount}/${pyramidPartTotal} · ${ranksFilled}/${PYRAMID_SIZE} placed</span>
       <h2 style="font-size:1.05rem">Tap to place · tap a placed card to un-rank</h2>
       ${renderTimerPill()}
 
@@ -455,7 +457,7 @@ function renderPyramidSort() {
         ${tierRanks
           .map(
             (tier, ti) => `
-          <div class="pyr-tier-label">${ti === 0 ? '#1 · TOP PRIORITY' : ti === 3 ? '#7–10 · lowest' : `#${tier[0]}–${tier[tier.length - 1]}`}</div>
+          <div class="pyr-tier-label">${ti === 0 ? '#1 · TOP PRIORITY' : ti === 2 ? '#4–5 · lowest in this part' : `#${tier[0]}–${tier[tier.length - 1]}`}</div>
           <div class="pyr-tier">
             ${tier
               .map((rank) => {
@@ -475,20 +477,18 @@ function renderPyramidSort() {
       <div class="unranked-list" style="margin-top:16px">
         ${
           unranked.length === 0
-            ? `<div class="s-ack">All 10 placed — ready to submit!</div>`
+            ? `<div class="s-ack">All ${PYRAMID_SIZE} placed — ready to submit!</div>`
             : unranked
                 .map(
                   (iv) => `
-          <div class="unranked-card" data-rank="${iv.id}">
-            <span class="card-num">#${iv.id}</span>${escapeHtml(iv.text)}
-          </div>`
+          <div class="unranked-card" data-rank="${iv.id}">${escapeHtml(iv.text)}</div>`
                 )
                 .join('')
         }
       </div>
 
       <button id="btnPyramidSubmit" class="btn btn-gold btn-block btn-xl" ${unranked.length > 0 ? 'disabled' : ''} style="margin-top:14px">
-        Submit my pyramid
+        Submit Part ${pyramidPartCount}
       </button>
     </div>
   `;
@@ -506,7 +506,7 @@ function renderPyramidSort() {
 
 function placeCard(id) {
   const used = new Set(Object.values(pyramidRanks));
-  for (let r = 1; r <= 10; r++) {
+  for (let r = 1; r <= PYRAMID_SIZE; r++) {
     if (!used.has(r)) {
       pyramidRanks[id] = r;
       break;
@@ -530,8 +530,8 @@ function submitPyramid() {
     id: parseInt(id, 10),
     rank,
   }));
-  if (ranking.length !== 10) return;
-  socket.emit('student:pyramid-submit', { ranking });
+  if (ranking.length !== PYRAMID_SIZE) return;
+  socket.emit('student:pyramid-submit', { half: pyramidHalf, ranking });
 }
 
 socket.on('student:pyramid-ack', () => {
@@ -569,7 +569,9 @@ socket.on('pyramid:analysis', () => {
 });
 
 function renderPyramid(s) {
-  if (s.subPhase === 'pyramid_sort') renderPyramidSort();
+  if (s.subPhase === 'pyramid_sort_a' || s.subPhase === 'pyramid_sort_b') {
+    renderPyramidSort();
+  }
 }
 
 /* ─── SCOREBOARD (student view) ─────────────────────────── */

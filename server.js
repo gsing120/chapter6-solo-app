@@ -154,15 +154,11 @@ async function speakNarration(text, label = 'narration') {
   const chunks = splitForTTS(text);
   if (chunks.length === 0) return;
   const myEpoch = narrationEpoch;
-  // Fire all TTS calls in parallel; emit each in order as it resolves so
-  // first sentence plays as soon as it's ready. If clearAudio() runs while
-  // we're awaiting, the epoch advances and we drop everything that's
-  // still pending so it doesn't play over the next slide.
   const promises = chunks.map((c) => generateTTS(c));
   for (const p of promises) {
     try {
       const audio = await p;
-      if (narrationEpoch !== myEpoch) return; // stale: a new phase took over
+      if (narrationEpoch !== myEpoch) return;
       if (audio) {
         io.emit('audio:play', {
           id: ++audioSeq,
@@ -174,6 +170,64 @@ async function speakNarration(text, label = 'narration') {
     } catch (e) {
       console.warn('[tts] chunk failed:', e.message);
     }
+  }
+}
+
+// "Synced" narration: don't emit the text until the FIRST TTS chunk is
+// ready, so the typewriter and audio start at the same instant. Caller
+// pre-emits a "processing" indicator so the user sees a smart spinner
+// while the first chunk is generating.
+async function speakAndShowSynced(text, emitTextFn, label = 'narration') {
+  const chunks = splitForTTS(text);
+  if (chunks.length === 0) {
+    emitTextFn();
+    return;
+  }
+  if (!ai) {
+    emitTextFn();
+    return;
+  }
+  const myEpoch = narrationEpoch;
+  // Kick all TTS calls off in parallel
+  const promises = chunks.map((c) => generateTTS(c));
+  let textEmitted = false;
+  // Safety: if first audio doesn't arrive in 6s, reveal text anyway
+  const safetyTimer = setTimeout(() => {
+    if (!textEmitted && narrationEpoch === myEpoch) {
+      textEmitted = true;
+      emitTextFn();
+    }
+  }, 6000);
+
+  for (let i = 0; i < promises.length; i++) {
+    try {
+      const audio = await promises[i];
+      if (narrationEpoch !== myEpoch) {
+        clearTimeout(safetyTimer);
+        return;
+      }
+      // First chunk: fire text reveal at the SAME moment we emit audio,
+      // so the typewriter starts in lockstep with the voice.
+      if (i === 0 && !textEmitted) {
+        textEmitted = true;
+        clearTimeout(safetyTimer);
+        emitTextFn();
+      }
+      if (audio) {
+        io.emit('audio:play', {
+          id: ++audioSeq,
+          label,
+          audioBase64: audio.base64,
+          mime: audio.mime,
+        });
+      }
+    } catch (e) {
+      console.warn('[tts] chunk failed:', e.message);
+    }
+  }
+  if (!textEmitted) {
+    clearTimeout(safetyTimer);
+    emitTextFn();
   }
 }
 
@@ -317,6 +371,8 @@ const state = {
     analysis: null,
   },
 
+  history: [],     // breadcrumb stack for back navigation
+  pendingAdvance: null, // { label, fn } — set when a gameplay timer hits 0
   chatHistory: [], // { q, a, ts }
   chatQueue: [],   // pending student questions: { id, from, group, question, ts }
 
@@ -367,6 +423,44 @@ function publicState() {
 
 function broadcastState() {
   io.emit('state:update', publicState());
+}
+
+function resetSessionState() {
+  stopTimer();
+  cancelNarrationWait();
+  state.pendingAdvance = null;
+  state.phase = 'LOBBY';
+  state.subPhase = null;
+  state.history = [];
+  state.ct = {
+    answers: { ct_q1: [], ct_q2: [], ct_q3: [] },
+    submittedBy: { ct_q1: new Set(), ct_q2: new Set(), ct_q3: new Set() },
+    aiSummary: null,
+  };
+  state.mvf = {
+    currentIndex: 0,
+    votes: {},
+    votedBy: {},
+    reveals: {},
+    finalSummary: null,
+  };
+  state.pyramid = {
+    submissionsA: {},
+    submissionsB: {},
+    submissions: {}, // legacy combined view used by the AI prompt
+    analysis: null,
+  };
+  state.chatHistory = [];
+  state.chatQueue = [];
+  for (const s of Object.values(state.students)) {
+    s.scores = { ct: 0, mvf: 0, pyramid: 0, total: 0 };
+    s.mvfAnswers = {};
+    s.pyramidRanking = null;
+    s.pyramidA = null;
+    s.pyramidB = null;
+  }
+  clearAudio();
+  broadcastState();
 }
 
 function startTimer(label, seconds, onDone) {
@@ -473,15 +567,14 @@ Phase just finished: ${phaseLabels[phaseKey]}
 Top 3 students (EXACT names to use — do not invent, substitute, or add any other names):
 ${top3Desc}
 
-Generate a playful 3-4 sentence announcement that:
-1. Shouts out each of the top 3 using ONLY the exact names above, each with a different nursing-themed compliment or joke
-2. Drops one content-related one-liner tying to Chapter 6 (skin, circulation, respiration, thermoregulation, or sex/intimacy)
-3. Ends with energy. No emojis. Savage-but-loving big-sibling energy.
+Generate a playful 2-3 sentence announcement that:
+1. Shouts out each of the top 3 using ONLY the exact names above, with one quick nursing-themed compliment each
+2. Drops one Chapter 6 one-liner
+3. Ends with energy. No emojis. STRICT MAX 60 words.
 
 HARD RULES:
-- Only use the student names provided above. Never use "Taylor", "Jordan", "Sam", "Alex", "Jamie" or any example/placeholder name.
-- If fewer than 3 students are listed, only shout out the ones listed.
-- Do not invent students or make up names.`;
+- Only use the student names provided above. Never use "Taylor", "Jordan", "Sam", "Alex", "Jamie" or any placeholder name.
+- If fewer than 3 students are listed, only shout out the ones listed.`;
 
   const fallback =
     top3.length > 0
@@ -491,16 +584,16 @@ HARD RULES:
   const praise = await callGemini(prompt, fallback, 10000);
 
   clearAudio();
-  io.emit('scoreboard', {
-    phaseKey,
-    phaseLabel: phaseLabels[phaseKey],
-    top,
-    top3,
-    praise,
-    overall: leaderboard(10),
-  });
-  speakNarration(praise, `scoreboard_${phaseKey}`);
-  // Wait for click OR audio-finished+grace; longer grace because praise can be long.
+  speakAndShowSynced(praise, () => {
+    io.emit('scoreboard', {
+      phaseKey,
+      phaseLabel: phaseLabels[phaseKey],
+      top,
+      top3,
+      praise,
+      overall: leaderboard(10),
+    });
+  }, `scoreboard_${phaseKey}`);
   startNarrationWait(() => { if (onDone) onDone(); }, { graceMs: 4000 });
 }
 
@@ -518,8 +611,98 @@ async function emitTransitionJoke(nextPhaseLabel) {
     8000
   );
   clearAudio();
-  io.emit('joke', { joke, nextPhase: nextPhaseLabel });
-  speakNarration(joke, 'joke');
+  speakAndShowSynced(joke, () => {
+    io.emit('joke', { joke, nextPhase: nextPhaseLabel });
+  }, 'joke');
+}
+
+/* ─── Pending-advance: timers no longer auto-advance ──────────── */
+// When a gameplay timer hits 0, we stash a pending fn and wait for the
+// presenter to click Next. This lets the room finish the activity at its
+// own pace instead of being skipped by the clock.
+function setPendingAdvance(label, fn) {
+  state.pendingAdvance = { label, fn };
+  io.emit('pending:advance', { label });
+}
+function consumePendingAdvance() {
+  if (!state.pendingAdvance) return false;
+  const { fn } = state.pendingAdvance;
+  state.pendingAdvance = null;
+  io.emit('pending:advance', { label: null });
+  fn();
+  return true;
+}
+
+/* ─── Back navigation ───────────────────────────────────────── */
+// Re-enter a previous sub-phase. Resets answers/votes for the target step
+// so students can redo it. Best-effort coverage of the common cases.
+function goBack() {
+  stopTimer();
+  cancelNarrationWait();
+  state.pendingAdvance = null;
+  clearAudio();
+
+  const sp = state.subPhase;
+  if (state.phase === 'CRITICAL_THINKING') {
+    if (sp === 'ct_q1' || sp === 'ct_scenario') {
+      // Already at the start — re-emit scenario
+      enterCriticalThinking();
+      return;
+    }
+    if (sp === 'ct_q2') return advanceCT('ct_q1');
+    if (sp === 'ct_q3') return advanceCT('ct_q2');
+    if (sp && sp.startsWith('ct_ai')) return advanceCT('ct_q3');
+    if (sp === 'ct_scoreboard') {
+      // Roll back into the AI summary screen
+      runCTAISummary();
+      return;
+    }
+  }
+
+  if (state.phase === 'MYTH_VS_FACT') {
+    if (sp === 'mvf_vote' || sp === 'mvf_reveal') {
+      const i = state.mvf.currentIndex;
+      if (i > 0) {
+        // Wipe the prior statement's votes so the class can re-vote on it
+        const prevId = PHASE2.statements[i - 1].id;
+        state.mvf.votes[prevId] = { MYTH: [], FACT: [] };
+        state.mvf.votedBy[prevId] = new Set();
+        delete state.mvf.reveals[prevId];
+        for (const s of Object.values(state.students)) {
+          delete s.mvfAnswers?.[prevId];
+        }
+        return startMVFStatement(i - 1);
+      }
+      // First statement — back goes to CT summary
+      return runCTAISummary();
+    }
+    if (sp === 'mvf_summary' || sp === 'mvf_summary_processing') {
+      return startMVFStatement(PHASE2.statements.length - 1);
+    }
+    if (sp === 'mvf_scoreboard') {
+      return runMVFFinalSummary();
+    }
+  }
+
+  if (state.phase === 'PRIORITY_PYRAMID') {
+    if (sp === 'pyramid_setup_a' || sp === 'pyramid_sort_a' || sp === 'pyramid_display_a') {
+      return enterPriorityPyramid();
+    }
+    if (sp === 'pyramid_setup_b' || sp === 'pyramid_sort_b' || sp === 'pyramid_display_b') {
+      // Back into Half A's display
+      state.pyramid.submissionsB = {};
+      for (const s of Object.values(state.students)) s.pyramidB = null;
+      return endPyramidSort('A');
+    }
+    if (sp === 'pyramid_ai' || sp === 'pyramid_ai_processing') {
+      return endPyramidSort('B');
+    }
+    if (sp === 'pyramid_scoreboard') {
+      return runPyramidAI();
+    }
+  }
+
+  // Fallback: nothing to go back to (LOBBY or COMPLETE) — no-op
 }
 
 /* ─── Phase: CRITICAL THINKING ──────────────────────────────── */
@@ -529,9 +712,10 @@ function enterCriticalThinking() {
   broadcastState();
   clearAudio();
   io.emit('ct:scenario', { scenario: PHASE1.scenario });
-  // Have the Artificial Nurse read the scenario aloud
-  speakNarration(PHASE1.scenario, 'ct_scenario');
-  startTimer('ct_scenario', TIMERS.ct_scenario, () => advanceCT('ct_q1'));
+  // No TTS for hardcoded content — the presenter reads the scenario aloud.
+  startTimer('ct_scenario', TIMERS.ct_scenario, () => {
+    setPendingAdvance('ct_scenario', () => advanceCT('ct_q1'));
+  });
 }
 
 function advanceCT(nextSub) {
@@ -541,12 +725,19 @@ function advanceCT(nextSub) {
     const qIndex = parseInt(nextSub.slice(-1), 10) - 1;
     const q = PHASE1.questions[qIndex];
     clearAudio();
+    // Clear any prior submissions for THIS question (relevant when redoing
+    // via the Back button)
+    state.ct.answers[nextSub] = [];
+    state.ct.submittedBy[nextSub] = new Set();
     io.emit('ct:question', { id: q.id, text: q.text, index: qIndex });
-    speakNarration(`Guiding question ${qIndex + 1}. ${q.text}`, `ct_q${qIndex + 1}`);
+    // No TTS — students read on their phone, presenter reads to the room.
     startTimer(nextSub, TIMERS[nextSub], () => {
       const nextIdx = qIndex + 1;
-      if (nextIdx < PHASE1.questions.length) advanceCT(`ct_q${nextIdx + 1}`);
-      else runCTAISummary();
+      if (nextIdx < PHASE1.questions.length) {
+        setPendingAdvance(nextSub, () => advanceCT(`ct_q${nextIdx + 1}`));
+      } else {
+        setPendingAdvance(nextSub, () => runCTAISummary());
+      }
     });
   }
 }
@@ -590,7 +781,7 @@ HARD RULES:
 - NEVER use placeholder names like "Taylor", "Jordan", "Sam", "Alex", "Jamie", "Maria" unless they appear in the list above.
 - If no real names are provided, do not name-drop at all — refer to "the class" or "most of you".
 
-Tone: warm, funny, clinical instructor who CARES but will call you out. No emojis. Under 220 words.`;
+Tone: warm, funny, clinical instructor who CARES but will call you out. No emojis. STRICT MAX 100 words — be punchy, not preachy.`;
 
   // Grade student responses first, then emit summary
   await gradeCTResponses();
@@ -600,10 +791,11 @@ Tone: warm, funny, clinical instructor who CARES but will call you out. No emoji
   state.subPhase = 'ct_ai';
   broadcastState();
   clearAudio();
-  io.emit('ct:summary', { summary });
-  speakNarration(summary, 'ct_summary');
   pushScoresToAllStudents();
-  // Wait for click OR audio-finished+grace before showing scoreboard
+  // Sync text reveal with first TTS chunk
+  speakAndShowSynced(summary, () => {
+    io.emit('ct:summary', { summary });
+  }, 'ct_summary');
   startNarrationWait(() => {
     emitScoreboard('ct', () => io.emit('ct:awaiting-next', {}));
   });
@@ -688,9 +880,9 @@ Every response must get a grade. Keep "reason" under 10 words.`;
 function enterMythVsFact() {
   state.phase = 'MYTH_VS_FACT';
   state.mvf.currentIndex = 0;
+  state.subPhase = 'mvf_intro';
   broadcastState();
   emitTransitionJoke('Myth vs Fact').finally(() => {
-    // Wait for joke audio to finish (or click) before starting MvF statements
     startNarrationWait(() => startMVFStatement(0));
   });
 }
@@ -710,11 +902,10 @@ function startMVFStatement(index) {
     index,
     total: PHASE2.statements.length,
   });
-  speakNarration(
-    `Statement ${index + 1} of ${PHASE2.statements.length}. ${stmt.text}. Myth or fact?`,
-    `mvf_statement_${stmt.id}`
-  );
-  startTimer('mvf_vote', TIMERS.mvf_vote, () => revealMVF(index));
+  // No TTS — students read on phone; voice is reserved for AI commentary.
+  startTimer('mvf_vote', TIMERS.mvf_vote, () => {
+    setPendingAdvance('mvf_vote', () => revealMVF(index));
+  });
 }
 
 async function revealMVF(index) {
@@ -749,18 +940,19 @@ RESULTS: ${pctMyth}% said MYTH, ${pctFact}% said FACT (n=${total})
 Wrong answer chosen: ${wrongAnswer} by ${wrongCount} students.
 Emancipatory angle: ${stmt.emancipatory}
 
-Write a 3-4 sentence spicy-but-warm reaction. REQUIREMENTS:
-- If >30% got it wrong, OPEN with a playful ROAST of the wrong-voters (nursing-humor, big-sibling energy, NEVER mean). Example energy: "Y'all trying to retire sexual health at 70? Chapter 6 just sat up in its grave."
-- If <=30% wrong, lead with a funny PRAISE of the class.
-- Punch in WHY it's actually ${stmt.answer.toLowerCase()} with ONE clinical fact from Chapter 6.
+Write a SHORT 2-3 sentence spicy-but-warm reaction. REQUIREMENTS:
+- If >30% got it wrong, OPEN with a playful ROAST (big-sibling energy, never mean).
+- If <=30% wrong, lead with a funny PRAISE.
+- Punch in WHY with ONE clinical fact.
 - Close with the emancipatory one-liner.
-- No emojis. Be funny — jokes land, not lectures.`;
+- No emojis. STRICT MAX 50 words.`;
 
   const roast = await callGemini(prompt, PHASE2.fallbackRoasts[stmt.id]);
   state.mvf.reveals[stmt.id] = { pctCorrect, roast };
   clearAudio();
-  io.emit('mvf:roast', { id: stmt.id, roast });
-  speakNarration(roast, `mvf_roast_${stmt.id}`);
+  speakAndShowSynced(roast, () => {
+    io.emit('mvf:roast', { id: stmt.id, roast });
+  }, `mvf_roast_${stmt.id}`);
 
   startNarrationWait(() => startMVFStatement(index + 1));
 }
@@ -777,19 +969,20 @@ async function runMVFFinalSummary() {
   const prompt = `You are Nurse Mike wrapping up a 6-statement myth-vs-fact game. Results:
 ${lines}
 
-Give a warm, funny 4-5 sentence wrap-up that:
-1. Names which statement(s) tripped up the class most and makes a quick joke about WHY the ageism is showing
-2. Connects patterns to ageism in healthcare
-3. Reinforces emancipatory nursing: challenge assumptions, advocate for whole-person care
-4. Ends with encouragement + one powerful one-liner. No emojis.`;
+Give a warm, funny 3-4 sentence wrap-up that:
+1. Names which statement(s) tripped up the class most with a quick ageism joke
+2. Reinforces emancipatory nursing in ONE punch line
+3. Ends with encouragement + one powerful one-liner.
+No emojis. STRICT MAX 80 words.`;
 
   const summary = await callGemini(prompt, PHASE2.fallbackFinal);
   state.mvf.finalSummary = summary;
   state.subPhase = 'mvf_summary';
   broadcastState();
   clearAudio();
-  io.emit('mvf:final', { summary });
-  speakNarration(summary, 'mvf_final');
+  speakAndShowSynced(summary, () => {
+    io.emit('mvf:final', { summary });
+  }, 'mvf_final');
   startNarrationWait(() => {
     emitScoreboard('mvf', () => io.emit('mvf:awaiting-next', {}));
   });
@@ -801,31 +994,71 @@ function enterPriorityPyramid() {
   state.subPhase = 'pyramid_intro';
   broadcastState();
   emitTransitionJoke('Priority Pyramid').finally(() => {
-    // Wait for joke to finish before opening pyramid setup
-    startNarrationWait(() => {
-      state.subPhase = 'pyramid_setup';
-      broadcastState();
-      clearAudio();
-      io.emit('pyramid:setup', { interventions: PHASE3.interventions });
-      speakNarration(
-        "Welcome to the Priority Pyramid. You will now individually rank ten nursing interventions for older adult care from highest to lowest priority. Tap each card on your phone to place it in your pyramid. Number one is the most important. Submit when all ten are placed. There is an emancipatory bonus for those who recognize that sexual health belongs near the top of the pyramid, not buried at the bottom. You'll have four minutes once sorting begins.",
-        'pyramid_intro'
-      );
-      startTimer('pyramid_setup', TIMERS.pyramid_setup, () => {
-      state.subPhase = 'pyramid_sort';
-      broadcastState();
-      io.emit('pyramid:sort', {});
-      startTimer('pyramid_sort', TIMERS.pyramid_sort, () => {
-        state.subPhase = 'pyramid_display';
-        broadcastState();
-        io.emit('pyramid:display', {
-          submissions: namedSubmissions(),
-        });
-        startTimer('pyramid_display', TIMERS.pyramid_display, () => runPyramidAI());
-      });
-    });
-  }); // close narrationWait
+    startNarrationWait(() => startPyramidPart('A'));
   });
+}
+
+// Pyramid split into halves of 5 items each.
+const PYRAMID_HALVES = {
+  A: [1, 2, 3, 4, 5], // thermoregulation/skin/social/cardio + sex item #3
+  B: [6, 7, 8, 9, 10], // respiratory/skin/sex/lifestyle + sex item #8
+};
+function pyramidItemsForHalf(half) {
+  const ids = new Set(PYRAMID_HALVES[half]);
+  return PHASE3.interventions.filter((iv) => ids.has(iv.id));
+}
+
+function startPyramidPart(half) {
+  const lower = half.toLowerCase();
+  state.subPhase = `pyramid_setup_${lower}`;
+  broadcastState();
+  clearAudio();
+  io.emit('pyramid:setup', {
+    half,
+    currentPart: half === 'A' ? 1 : 2,
+    totalParts: 2,
+    interventions: pyramidItemsForHalf(half),
+  });
+  startTimer(`pyramid_setup_${lower}`, TIMERS.pyramid_setup, () => {
+    setPendingAdvance(`pyramid_setup_${lower}`, () => beginPyramidSort(half));
+  });
+}
+
+function beginPyramidSort(half) {
+  const lower = half.toLowerCase();
+  state.subPhase = `pyramid_sort_${lower}`;
+  broadcastState();
+  io.emit('pyramid:sort', { half });
+  startTimer(`pyramid_sort_${lower}`, TIMERS.pyramid_sort, () => {
+    setPendingAdvance(`pyramid_sort_${lower}`, () => endPyramidSort(half));
+  });
+}
+
+function endPyramidSort(half) {
+  const lower = half.toLowerCase();
+  state.subPhase = `pyramid_display_${lower}`;
+  broadcastState();
+  io.emit('pyramid:display', {
+    half,
+    submissions: namedSubmissionsHalf(half),
+  });
+  startTimer(`pyramid_display_${lower}`, TIMERS.pyramid_display, () => {
+    if (half === 'A') {
+      setPendingAdvance('pyramid_display_a', () => startPyramidPart('B'));
+    } else {
+      setPendingAdvance('pyramid_display_b', () => runPyramidAI());
+    }
+  });
+}
+
+function namedSubmissionsHalf(half) {
+  const src = half === 'A' ? state.pyramid.submissionsA : state.pyramid.submissionsB;
+  const out = {};
+  for (const [cid, ranking] of Object.entries(src || {})) {
+    const s = state.students[cid];
+    if (s) out[`${s.name} (${s.group})`] = ranking;
+  }
+  return out;
 }
 
 function namedSubmissions() {
@@ -897,7 +1130,7 @@ HARD RULES:
 - NEVER use placeholder names like "Taylor", "Jordan", "Sam", "Alex", "Jamie".
 - If fewer than the requested number of strong pyramids exist, only name the ones that do.
 
-Tone: nursing-comedy-roast with teeth. No emojis. Under 280 words.`;
+Tone: nursing-comedy-roast with teeth. No emojis. STRICT MAX 130 words — keep it punchy.`;
 
   const analysis = await callGemini(prompt, PHASE3.fallbackAnalysis);
   state.pyramid.analysis = analysis;
@@ -912,11 +1145,12 @@ Tone: nursing-comedy-roast with teeth. No emojis. Under 280 words.`;
   state.subPhase = 'pyramid_ai';
   broadcastState();
   clearAudio();
-  io.emit('pyramid:analysis', {
-    analysis,
-    submissions: namedSubmissions(),
-  });
-  speakNarration(analysis, 'pyramid_analysis');
+  speakAndShowSynced(analysis, () => {
+    io.emit('pyramid:analysis', {
+      analysis,
+      submissions: namedSubmissions(),
+    });
+  }, 'pyramid_analysis');
   startNarrationWait(() => {
     emitScoreboard('pyramid', () => io.emit('pyramid:awaiting-next', {}));
   });
@@ -936,7 +1170,7 @@ The class just completed:
 - Phase 2: Myth vs Fact (10 statements on sexual health, thermoregulation, polypharmacy, atypical presentations, social isolation)
 - Phase 3: Priority Pyramid (individual ranking of 10 interventions, sexual-health bias check)
 
-Generate a concise CLOSING SUMMARY (5-6 sentences) that:
+Generate a concise CLOSING SUMMARY (3-4 sentences, MAX 90 words) that:
 1. Names the THREE most important clinical takeaways from Chapter 6 (one each from skin/circulation/respiration, thermoregulation, sex/intimacy)
 2. Explicitly names the EMANCIPATORY message: holistic care, autonomy, social determinants, challenging ageism
 3. Calls back to Margaret (the case patient) with one specific reminder
@@ -949,8 +1183,9 @@ No emojis. Tone: warm, clear, end-of-class energy.`;
 
   const summary = await callGemini(prompt, fallback, 14000);
   clearAudio();
-  io.emit('complete', { final: leaderboard(20), takeaways: summary });
-  speakNarration(summary, 'closing_takeaways');
+  speakAndShowSynced(summary, () => {
+    io.emit('complete', { final: leaderboard(20), takeaways: summary });
+  }, 'closing_takeaways');
   startNarrationWait(() => {
     /* end of session — no auto-advance, just stay here */
   }, { graceMs: 6000, hardCapMs: 600000 });
@@ -983,7 +1218,7 @@ async function answerSingleAdHoc(question) {
 
 QUESTION: "${q}"
 
-Answer in 2-4 sentences. Accurate to Chapter 6 content (skin/circulation/respiration/thermoregulation/sex & intimacy in older adults, emancipatory nursing). Clinical where it matters, warm humor throughout. If off-topic, pivot back with a quick joke. No emojis.`;
+Answer in 2-3 short sentences (MAX 60 words). Accurate to Chapter 6 content (skin/circulation/respiration/thermoregulation/sex & intimacy in older adults, emancipatory nursing). Clinical where it matters, warm humor throughout. If off-topic, pivot back with a quick joke. No emojis.`;
   const answer = await callGemini(
     prompt,
     "The Artificial Nurse is buffering, but here's the short version: Chapter 6 is about treating the WHOLE older adult — every system, including the uncomfortable ones. Rephrase and I'll go deeper."
@@ -991,8 +1226,9 @@ Answer in 2-4 sentences. Accurate to Chapter 6 content (skin/circulation/respira
   state.chatHistory.push({ q, a: answer, ts: Date.now() });
   if (state.chatHistory.length > 30) state.chatHistory.shift();
   clearAudio();
-  io.emit('chat:answer', { question: q, answer });
-  speakNarration(answer, 'chat_answer');
+  speakAndShowSynced(answer, () => {
+    io.emit('chat:answer', { question: q, answer });
+  }, 'chat_answer');
 }
 
 async function flushChatQueue() {
@@ -1015,7 +1251,7 @@ ${numbered}
 
 For EACH question, output exactly this format on its own line-block:
 
-[n]. To <StudentName>: <your answer in 2-3 sentences — warm, funny, nursing-accurate, grounded in Chapter 6>
+[n]. To <StudentName>: <your answer in 1-2 short sentences (max 35 words) — warm, funny, nursing-accurate, grounded in Chapter 6>
 
 Rules:
 - Address the student by first name when you answer.
@@ -1120,16 +1356,38 @@ io.on('connection', (socket) => {
     socket.join('presenter');
 
     socket.on('presenter:start', () => {
-      if (state.phase === 'LOBBY') enterCriticalThinking();
+      if (state.phase !== 'LOBBY') return;
+      // Wipe ALL session state so a new presentation starts clean
+      // (no leftover answers, votes, scores, queue, or chat from a prior class)
+      resetSessionState();
+      enterCriticalThinking();
     });
 
     socket.on('presenter:next', () => {
-      // Click during a narration-wait: that's the "advance now" signal.
+      // 1. Click during a narration-wait: end the wait now.
       if (narrationWait && !narrationWait.advanced) {
         advanceNarration('presenter-click');
         return;
       }
-      // Otherwise: phase-level next (between major phases)
+      // 2. Click during a gameplay phase whose timer has hit 0: advance now.
+      if (state.pendingAdvance) {
+        consumePendingAdvance();
+        return;
+      }
+      // 3. Click during a gameplay phase whose timer is STILL running:
+      //    treat as "skip ahead" — fire the same advance the timer would.
+      if (state.timer.interval) {
+        // Force the running timer to expire on the next tick. Its onDone will
+        // either advance immediately or stash a pendingAdvance.
+        state.timer.seconds = 0;
+        // Then immediately consume any pendingAdvance the onDone created.
+        // Use a microtask so the onDone has a chance to register first.
+        setTimeout(() => {
+          if (state.pendingAdvance) consumePendingAdvance();
+        }, 50);
+        return;
+      }
+      // 4. Otherwise: cross-phase advance (between major phases).
       if (state.phase === 'CRITICAL_THINKING') enterMythVsFact();
       else if (state.phase === 'MYTH_VS_FACT') enterPriorityPyramid();
       else if (state.phase === 'PRIORITY_PYRAMID') enterComplete();
@@ -1140,7 +1398,15 @@ io.on('connection', (socket) => {
         advanceNarration('presenter-skip');
         return;
       }
+      if (state.pendingAdvance) {
+        consumePendingAdvance();
+        return;
+      }
       if (state.timer.interval) state.timer.seconds = 1;
+    });
+
+    socket.on('presenter:back', () => {
+      goBack();
     });
 
     socket.on('audio:finished', onAudioFinished);
@@ -1187,21 +1453,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('presenter:reset', () => {
-      stopTimer();
-      state.phase = 'LOBBY';
-      state.subPhase = null;
-      state.ct.answers = { ct_q1: [], ct_q2: [], ct_q3: [] };
-      state.ct.submittedBy = { ct_q1: new Set(), ct_q2: new Set(), ct_q3: new Set() };
-      state.ct.aiSummary = null;
-      state.mvf = { currentIndex: 0, votes: {}, votedBy: {}, reveals: {}, finalSummary: null };
-      state.pyramid = { submissions: {}, analysis: null };
-      state.chatHistory = [];
-      for (const s of Object.values(state.students)) {
-        s.scores = { ct: 0, mvf: 0, pyramid: 0, total: 0 };
-        s.mvfAnswers = {};
-        s.pyramidRanking = null;
-      }
-      broadcastState();
+      resetSessionState();
       io.emit('reset', {});
     });
 
@@ -1317,27 +1569,49 @@ io.on('connection', (socket) => {
       socket.emit('student:score', { scores: student.scores });
     });
 
-    socket.on('student:pyramid-submit', ({ ranking }) => {
+    socket.on('student:pyramid-submit', ({ half, ranking }) => {
       if (state.phase !== 'PRIORITY_PYRAMID') return;
-      if (state.subPhase !== 'pyramid_sort') return;
+      const expectedSub = half === 'A' ? 'pyramid_sort_a' : 'pyramid_sort_b';
+      if (state.subPhase !== expectedSub) return;
       const cid = state.socketToClient[socket.id];
       const student = state.students[cid];
       if (!student) return;
 
-      if (!Array.isArray(ranking) || ranking.length !== 10) return;
+      const allowedIds = PYRAMID_HALVES[half] || [];
+      if (!Array.isArray(ranking) || ranking.length !== 5) return;
       const ids = new Set(ranking.map((r) => r.id));
       const ranks = new Set(ranking.map((r) => r.rank));
-      if (ids.size !== 10 || ranks.size !== 10) return;
+      if (ids.size !== 5 || ranks.size !== 5) return;
+      // Validate every id is in this half and every rank is 1..5
+      for (const r of ranking) {
+        if (!allowedIds.includes(r.id)) return;
+        if (r.rank < 1 || r.rank > 5) return;
+      }
 
-      state.pyramid.submissions[cid] = ranking;
-      student.pyramidRanking = ranking;
+      const target = half === 'A' ? state.pyramid.submissionsA : state.pyramid.submissionsB;
+      target[cid] = ranking;
+      if (half === 'A') student.pyramidA = ranking;
+      else student.pyramidB = ranking;
+
+      // Once both halves are submitted, merge into a 1..10 combined ranking.
+      // Half A occupies ranks 1..5, half B occupies ranks 6..10. We preserve
+      // each student's within-half ordering when collapsing.
+      if (student.pyramidA && student.pyramidB) {
+        const combined = [
+          ...student.pyramidA.map((r) => ({ id: r.id, rank: r.rank })),
+          ...student.pyramidB.map((r) => ({ id: r.id, rank: 5 + r.rank })),
+        ];
+        state.pyramid.submissions[cid] = combined;
+        student.pyramidRanking = combined;
+      }
 
       io.to('presenter').emit('pyramid:submission', {
         by: student.name,
         group: student.group,
-        count: Object.keys(state.pyramid.submissions).length,
+        half,
+        count: Object.keys(target).length,
       });
-      socket.emit('student:pyramid-ack', {});
+      socket.emit('student:pyramid-ack', { half });
     });
 
     socket.on('disconnect', () => {

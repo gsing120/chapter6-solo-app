@@ -332,6 +332,11 @@ body.presenter.qr-on .p-stage > * {
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
+  scroll-margin-bottom: 60px;
+}
+/* Cap visual height of long AI text and scroll inside it during typewriter */
+.ai-summary {
+  max-height: 100%;
 }
 
 /* ─── Joke card ─────────────────────────────────────────────── */
