@@ -231,7 +231,7 @@ socket.on('ct:scenario', ({ scenario }) => {
   stage.innerHTML = `
     <div class="s-card glass">
       <span class="seg-badge seg-1">Phase 1 · Critical Thinking</span>
-      <h2>Scenario · Margaret</h2>
+      <h2>Scenario · BC Heat Warning</h2>
       <div class="scenario-readonly">${escapeHtml(cachedScenario)}</div>
       <div class="hint">Your instructor is reading this aloud. Guiding questions will appear next.</div>
       ${renderTimerPill()}
@@ -602,6 +602,29 @@ socket.on('joke', ({ joke }) => {
       <span class="seg-badge seg-3" style="color:var(--gold);border-color:var(--gold)">Quick joke</span>
       <h2 style="font-size:1.15rem">${escapeHtml(joke)}</h2>
       <p class="hint">Next phase starting…</p>
+    </div>
+  `;
+});
+
+/* ─── Phase 2 / Phase 3 context cards for students ─────────── */
+socket.on('mvf:context', ({ title, context }) => {
+  stage.innerHTML = `
+    <div class="s-card glass">
+      <span class="seg-badge seg-2">Phase 2 · Activity 2</span>
+      <h2 style="font-size:1.2rem">${escapeHtml(title || 'Meet Emily')}</h2>
+      <div class="scenario-readonly">${escapeHtml(context)}</div>
+      <p class="hint">Watch the front screen — the Artificial Nurse is reading. Statements are coming.</p>
+    </div>
+  `;
+});
+
+socket.on('pyramid:context', ({ title, context }) => {
+  stage.innerHTML = `
+    <div class="s-card glass">
+      <span class="seg-badge seg-3">Phase 3 · Activity 3</span>
+      <h2 style="font-size:1.2rem">${escapeHtml(title || 'Meet Mr. M')}</h2>
+      <div class="scenario-readonly">${escapeHtml(context)}</div>
+      <p class="hint">Watch the front screen. You'll be ranking 10 things you'd want to know about Mr. M, in two parts.</p>
     </div>
   `;
 });

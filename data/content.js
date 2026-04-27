@@ -1,150 +1,178 @@
 /* ═══════════════════════════════════════════════════════════════
-   Chapter 6 Solo App — All Content (swap here without touching logic)
+   Chapter 6 Solo App — All Content
+   Mapped DIRECTLY to the textbook end-of-chapter prompts:
+     Phase 1 = Critical Thinking Q3 (BC heat warnings, at-risk pops)
+     Phase 2 = Emancipatory Activity 2 (Emily Grayson, skin care)
+     Phase 3 = Emancipatory Activity 3 (Mr. M, heart failure, relational practice)
    ═══════════════════════════════════════════════════════════════ */
 
-// ── PHASE 1: Critical Thinking ──
+// ── PHASE 1: Critical Thinking — Textbook CT Q3 (BC heat warnings) ──
 const PHASE1 = {
-  scenario: `Margaret is an 82-year-old widow who lives alone in a second-floor walk-up apartment. Her husband died four years ago. Her two adult children live out of province and call her about once a week.
+  title: 'Heat warnings & at-risk older adults',
+  scenario: `It is mid-July in British Columbia. Island Health has issued a heat warning across Vancouver Island as daytime temperatures climb into the high 30s and overnight lows give little relief. The official news release advises the public to drink fluids regularly, avoid strenuous outdoor activity, take cool showers, find air-conditioned spaces — libraries, malls, community cooling centres — and check on neighbours, family, and friends. The release names higher-risk groups: older adults, people with chronic illness, people experiencing homelessness, and those living alone.
 
-She is brought to the ED in mid-January after a neighbour found her sitting in her kitchen wearing two sweaters and a scarf, looking "a bit confused." Her core temperature on arrival is 34.8°C. Vitals: BP 102/64, HR 52, SpO₂ 94% on room air, BGL 4.6 mmol/L. She is alert but slow to respond, and tells the triage nurse she's been feeling "a bit off — but nothing really."
+Context the report does not say out loud: in BC's 2021 heat dome, 619 people died. The majority were older adults. Most were found alone, inside their own apartments, without air conditioning. Some had received the public advisory and could not act on it — a fixed income, a fourth-floor walk-up, no fan, no one to call. Others never saw the advisory at all.
 
-History reveals she has been wearing extra layers indoors for weeks. Her thermostat is set to 16°C — she explains that heating costs have "gotten ridiculous" since her CPP and OAS are her only income. She has not seen her family doctor in 8 months. Her medication list includes hydrochlorothiazide, atenolol, and a recent self-increased dose of lorazepam she's been taking "to help me sleep through the long winter nights." She has stopped attending her usual community group at the local library because she's "too tired" lately. She has not been eating regular meals.
-
-You are her admitting nurse.`,
+You are the public-health nurse on call as the warning is issued.`,
   questions: [
     {
       id: 'ct_q1',
-      text: 'Margaret did not recognize how cold she was. Identify at least TWO age-related physiological changes (think: nervous system, vasculature, fat/skin) that contributed to her unawareness, and EXPLAIN how each one specifically blunted her ability to perceive or respond to the cold. One-word answers will not cut it — give clinical reasoning.',
+      text:
+        'The Island Health release advises water, AC, cooling centres, and checking on neighbours. Identify at least THREE specific groups of older adults who are MOST AT RISK of falling through the cracks of this advice — people the report names but does not actually reach. For each group, explain WHY the standard advice does not land. Avoid one-word answers — give clinical and social reasoning.',
     },
     {
       id: 'ct_q2',
-      text: "List at least TWO INTRINSIC and TWO EXTRINSIC risk factors in Margaret's situation, and explain how each contributes to her hypothermia and overall vulnerability. Don't just label them — show how income, isolation, medications, and her body interact.",
+      text:
+        "Pick ONE of the at-risk groups you named in Q1. Describe TWO concrete, specific actions a nurse can take BEFORE a heat warning hits, and TWO actions DURING an active heat event, to reach that group. Be specific — what would you actually do, who would you call, what would you say? Don't list 'educate the patient' — say what you'd actually educate, how, and why.",
     },
     {
       id: 'ct_q3',
-      text: 'Using an EMANCIPATORY nursing lens, describe TWO specific actions you would take to help Margaret while protecting her autonomy and dignity. Be specific — what would you actually say to her, and what concrete resources or referrals would you make? Avoid being paternalistic.',
+      text:
+        "Critique the Island Health response through an EMANCIPATORY lens. Top-down public health messaging assumes everyone has equal access to act on the advice. What's missing? How would you redesign the response so older adults' autonomy, lived experience, and social context — not just compliance — sit at the centre? Name at least one structural change AND one relational change you'd advocate for.",
     },
   ],
   fallbackSummary:
-    "Strong responses overall. Many of you correctly identified the age-related changes — reduced vasoconstriction, decreased subcutaneous fat, dulled thermal sensitivity, and a slower shivering response — and connected them to why Margaret didn't notice she was hypothermic. The emancipatory takeaway is the powerful part: this isn't just a clinical problem, it's rooted in social determinants — income, isolation, lack of follow-up, and medications she felt she had to manage on her own. Emancipatory nursing means we don't just rewarm her — we connect her to community heating programs, follow up on the lorazepam she increased without her doctor, gently bring her social isolation into the conversation, and respect her right to make informed decisions. Holistic care is never just about the body.",
+    "Strong responses across the three sub-questions. Many of you correctly named the older adults the heat advisory does not actually reach — those living alone in older apartment blocks without AC, on fixed incomes (CPP/OAS), with mobility limitations or cognitive change, isolated from family, or with chronic illness that already strains their thermoregulation. The emancipatory critique is the powerful piece: this is not a one-off clinical event — it is a SOCIAL DETERMINANT story. Top-down public messaging dictates compliance; emancipatory nursing collaborates. That means before the heatwave we are doing wellness checks, knowing who lives alone, building neighbour networks, advocating for structural fixes — cooling centres in walking distance, building codes that don't bake older renters, transit during emergencies. During the event, we don't just say 'drink water' — we ask what's actually getting in the way, and we work the problem WITH the patient. Holistic care is never just about the body.",
 };
 
-// ── PHASE 2: Myth vs Fact ──
+// ── PHASE 2: Emancipatory Activity — Textbook Activity 2 (Emily Grayson, skin care) ──
 const PHASE2 = {
+  title: "Emily Grayson — person-centred skin care education",
+  emilyContext: `Emily Grayson is 83. She is healthy, active, and an avid gardener — she's outside in her garden three to four hours most days, year-round. Today she's at your community-health appointment for her annual visit. You have been asked to provide health teaching about skin health and aging.
+
+Emily mentions she "doesn't bother with much sunscreen — never has, and look at me, I'm fine." She also says she has noticed a new spot on the back of her hand that "looks a bit different." She lives on a modest pension and asks if there's anything in particular she should be doing.
+
+The next ten statements are about HOW you would educate Emily — person-centred, emancipatory, respecting her autonomy, her health literacy, her preferences. For each statement, vote MYTH (this is wrong, paternalistic, or clinically inaccurate) or FACT (this is correct, person-centred, evidence-based).`,
   statements: [
     {
       id: 'mvf_1',
-      text: 'Sexual desire naturally disappears after age 70.',
+      text: "An 83-year-old who has gardened her whole life should be told to stop gardening — sun exposure is too risky.",
       answer: 'MYTH',
       emancipatory:
-        "Ageist assumption that erases older adults' needs — sexuality doesn't have an expiry date.",
+        "Paternalistic. Gardening is meaningful to Emily. Emancipatory practice works WITH her routine — protective clothing, hat, timing, sunscreen — not against it.",
     },
     {
       id: 'mvf_2',
-      text: 'Nurses should wait for older patients to bring up sexual health concerns themselves.',
-      answer: 'MYTH',
+      text: "An older adult's epidermis thins and loses subcutaneous fat with age, increasing fragility, bruising, and tear risk.",
+      answer: 'FACT',
       emancipatory:
-        'Silence is complicity. Emancipatory nursing means proactive advocacy — we open the door, we don\'t stand by it.',
+        "Knowing the why builds trust. Don't lecture — explain the change so Emily can recognize it on her own skin and decide what to do.",
     },
     {
       id: 'mvf_3',
-      text: 'Older adults can get sexually transmitted infections.',
-      answer: 'FACT',
+      text: 'Wound healing rates in older skin are about the same as in younger adults — age does not slow healing.',
+      answer: 'MYTH',
       emancipatory:
-        'STI rates are rising in older adults — screening matters at every age.',
+        "Healing IS slower (loss of stem cells, thinner dermis, fewer fibroblasts). Tell Emily so she takes a small cut seriously, not so she panics.",
     },
     {
       id: 'mvf_4',
-      text: 'Erectile dysfunction is a normal, inevitable part of aging.',
-      answer: 'MYTH',
+      text: "Asking Emily about her current sun-protection routine BEFORE giving advice is best practice.",
+      answer: 'FACT',
       emancipatory:
-        'ED is often treatable — medications, circulation, chronic illness. Don\'t normalize it as "just aging."',
+        "Start where she is. Education that ignores what she already does — and why — lands as a lecture, not a partnership.",
     },
     {
       id: 'mvf_5',
-      text: 'A 1°C rise above baseline temperature in an older adult can indicate a serious infection.',
-      answer: 'FACT',
+      text: "Sunscreen alone is sufficient sun protection — wide-brim hat, long sleeves, and timing of outdoor work do not add much.",
+      answer: 'MYTH',
       emancipatory:
-        'Older adults often don\'t mount full fevers — knowing their individual baseline is life-saving.',
+        "Multimodal protection wins, especially for someone outside 3–4 hours daily. And on a fixed income, layered strategies are also more affordable.",
     },
     {
       id: 'mvf_6',
-      text: "Social isolation has no significant impact on an older adult's physical health.",
-      answer: 'MYTH',
+      text: 'Teaching Emily the ABCDE skin self-check (Asymmetry, Border, Colour, Diameter, Evolving) and watching her demonstrate it on her own arm is more empowering than handing her a pamphlet.',
+      answer: 'FACT',
       emancipatory:
-        'Isolation affects cardiovascular, immune, cognitive, and sexual health — it IS a nursing concern.',
+        "Teach-back transfers ownership. A pamphlet leaves it with the system — the demonstration leaves it with her.",
     },
     {
       id: 'mvf_7',
-      text: 'Older adults experience pain less intensely, so we can rely on their reports of mild pain being accurate.',
+      text: "Older adults' skin sensitivity INCREASES with age, so they reliably notice small injuries early.",
       answer: 'MYTH',
       emancipatory:
-        'Older adults often UNDER-report pain due to stoicism, fear of medication, or cognitive change. Use multimodal pain assessment — never assume mild means mild.',
+        "Skin sensitivity DECREASES with age. Ask Emily to do a routine visual self-check — she may not feel a small injury.",
     },
     {
       id: 'mvf_8',
-      text: 'Polypharmacy is a major risk factor for falls in older adults.',
+      text: "Emily mentions she can't always afford the 'nice' sunscreens. Treating her budget constraint as a clinical issue — not just a personal one — is part of the nursing assessment.",
       answer: 'FACT',
       emancipatory:
-        'Five or more meds dramatically increases fall risk. Medication review is a nursing intervention — not just a pharmacist task.',
+        "Social determinants ARE clinical determinants. Connecting her to community pharmacy programs or generic-equivalent options is nursing work.",
     },
     {
       id: 'mvf_9',
-      text: 'A confused older adult with a UTI will reliably present with a high fever.',
+      text: "Because Emily said the new spot 'looks a bit different,' you can reassure her and revisit at her next annual visit.",
       answer: 'MYTH',
       emancipatory:
-        'Atypical presentation is the rule, not the exception — confusion, incontinence, fatigue, anorexia. Don\'t wait for a fever to investigate.',
+        "Asymmetry, irregular border, colour change, growing diameter, evolving lesion — all warrant prompt dermatology referral. Earlier diagnosis = better outcome.",
     },
     {
       id: 'mvf_10',
-      text: 'Touch and physical affection remain important for older adults\' wellbeing.',
+      text: "When Emily says 'I'm fine, look at me,' the nurse should acknowledge her experience and her body of evidence — not override it — while still surfacing what age changes mean for her gardening.",
       answer: 'FACT',
       emancipatory:
-        'Intimacy is broader than sex. Touch deprivation has measurable effects on cardiovascular and mental health — this is a holistic-care issue.',
+        'Respecting her self-knowledge is not the same as agreeing she needs nothing. Both can be true. That is relational practice.',
     },
   ],
   fallbackRoasts: {
     mvf_1:
-      "Sexual desire doesn't have an expiry date, folks. The fact that any of you thought it does? That's the ageism Chapter 6 warns us about.",
+      "Telling an 83-year-old gardener to stop gardening? That's not nursing — that's grief delivery. Emancipatory practice works WITH her life, not against it.",
     mvf_2:
-      "Waiting for the patient to bring it up is like waiting for a fire to put itself out. We're nurses — we open doors, we don't stand by them.",
+      "Yes — thinning skin, less fat, more fragile. The point isn't to scare Emily. It's to help her see what we see so she can act on her own terms.",
     mvf_3:
-      "STIs don't check birth certificates. Nice work if you knew this — it's the kind of fact that saves lives in practice.",
+      "Older skin heals slower, full stop. Knowing this helps Emily take a small cut seriously without spiraling. That's the difference between informed and afraid.",
     mvf_4:
-      "ED is not 'just aging' — it's often medications, chronic illness, or circulation changes. All treatable. All worth asking about.",
+      "Start where she is. The class that goes straight to 'wear SPF 50' before asking what she already does just turned a partnership into a lecture.",
     mvf_5:
-      "One degree up from baseline matters. Older adults don't spike fevers the way younger patients do — subtle is serious.",
+      "Sunscreen ALONE for a 4-hour-a-day gardener? You've turned skin protection into a single-point-of-failure system. Hat, sleeves, timing, sunscreen — all of it.",
     mvf_6:
-      "Social isolation doesn't just make you lonely — it makes you sick. Cardiovascular, immune, everything. This is a nursing concern.",
+      "Pamphlet vs teach-back? Teach-back wins every time. The skill stays with HER, not in a drawer.",
     mvf_7:
-      "Older adults under-report pain — stoicism, fear of opioids, cognitive change. Trust your assessment, not just their numerical rating.",
+      "Skin sensitivity DROPS with age. That's exactly why Emily needs the visual self-check — her body may not tell her something happened.",
     mvf_8:
-      "Polypharmacy + older adult = falls until proven otherwise. Med review is part of your nursing assessment, not someone else's job.",
+      "Money is a clinical determinant of skin health. The minute we ignore it we're treating the patient on paper, not the one in front of us.",
     mvf_9:
-      "Atypical is the typical in geriatrics. New confusion, incontinence, refusing food — investigate before waiting for a fever to show up.",
+      "Reassure-and-revisit is how late-stage skin cancer happens. New, different, evolving spot = referral. Today, not next April.",
     mvf_10:
-      "Touch is a vital sign of human wellbeing. Intimacy is bigger than sex — and the absence of it has real, measurable health effects.",
+      "'I'm fine, look at me' deserves respect. So does the new mole on her hand. Emancipatory practice holds both — her experience AND the clinical reality.",
   },
   fallbackFinal:
-    "Few patterns to call out: the sexual-health and atypical-presentation myths tripped up the most students, and that's not a coincidence — it's ageism leaking into clinical judgment. The emancipatory message of Chapter 6 is simple: challenge your own assumptions, assess the whole person, and don't let stereotypes narrow your scope of care. You all showed up for the hard conversations today — that's exactly what this chapter asks of us.",
+    "Three patterns to take away. Anywhere paternalism crept in — telling Emily to stop gardening, ignoring her budget, dismissing the new spot, lecturing instead of asking — that's where ageism wears scrubs. Emancipatory skin-care education starts with what she already does, names age changes without alarm, teaches the ABCDE check on HER skin, and treats her financial reality as a clinical concern. You're not protecting Emily from her life. You're partnering with her in it.",
 };
 
-// ── PHASE 3: Priority Pyramid ──
+// ── PHASE 3: Emancipatory Activity — Textbook Activity 3 (Mr. M, heart failure, relational practice) ──
+// Items 1–5 (Part A) = relational / contextual / "who is Mr. M"
+// Items 6–10 (Part B) = clinical / structural / "what's happening to him"
+// The textbook prompt asks: what info is essential, acknowledging his unique identity?
+// The architecture forces relational items into the top 5 — the within-half ranking
+// reveals which relational priority students treat as most foundational.
 const PHASE3 = {
+  title: 'Mr. M — initial encounter, relational practice',
+  mrMContext: `Mr. M is 70 years old. He has heart failure. He is struggling — fatigue, shortness of breath, edema have crept in over the last six months, and he is unable to do many of the activities he loves. This is your INITIAL ENCOUNTER with him. He is sitting across from you and you have one appointment to begin a relationship that will carry his care.
+
+You will rank ten things you might want to know about Mr. M, in two parts. The textbook asks: "What information is essential, acknowledging his unique identity and experiences? How can this knowledge serve as a tool to comprehend and respect Mr. M's personal perspective on his experience of illness?"
+
+PART 1: rank 5 RELATIONAL priorities — who he is, what matters to him.
+PART 2: rank 5 CLINICAL priorities — the disease state, meds, symptoms, function, history.
+
+Both matter. Their ORDER tells the story.`,
   interventions: [
-    { id: 1, text: 'Assess baseline temperature over several days' },
-    { id: 2, text: 'Educate patient on sun protection and skin hydration' },
-    { id: 3, text: 'Ask the patient about their sexual health needs' },
-    { id: 4, text: 'Connect patient to community heating assistance programs' },
-    { id: 5, text: 'Promote regular cardiovascular exercise' },
-    { id: 6, text: 'Assess respiratory function and encourage vaccinations' },
-    { id: 7, text: 'Educate on signs of hypothermia' },
-    { id: 8, text: 'Screen for erectile dysfunction or menopausal symptoms' },
-    { id: 9, text: 'Assess skin integrity and pressure injury risk' },
-    { id: 10, text: 'Discuss smoking cessation and pollutant exposure' },
+    // ── Part A: relational / contextual (ids 1-5) ──
+    { id: 1, text: 'His goals — what HE wants from his care, his life, this conversation' },
+    { id: 2, text: "His values, beliefs, and what gives his life meaning" },
+    { id: 3, text: "His own words for his diagnosis — how HE understands and experiences it" },
+    { id: 4, text: 'The activities he misses most and why those activities matter to him' },
+    { id: 5, text: 'His social support network — who lives with him, close relationships, who would notice if he was off' },
+    // ── Part B: clinical / structural (ids 6-10) ──
+    { id: 6, text: 'Current cardiac symptoms — orthopnea, fatigue, edema, dyspnea on exertion' },
+    { id: 7, text: 'Current cardiac medications and how he manages adherence day-to-day' },
+    { id: 8, text: 'Activity tolerance and functional status — walking distance, stairs, ADLs' },
+    { id: 9, text: 'Detailed cardiac history — ejection fraction, recent admissions, comorbidities' },
+    { id: 10, text: 'Financial situation, insurance coverage, access to medications and follow-up care' },
   ],
   fallbackAnalysis:
-    "Interesting pattern — most students put temperature assessment and skin integrity at the top, and sexual health near the bottom. Ask yourselves: is that evidence-based prioritization, or is it your own discomfort? Chapter 6 is clear: holistic care includes ALL systems, sexuality among them. If we consistently deprioritize sexual health in older adults, we reinforce the exact ageist assumptions this course challenges us to break. Emancipatory nursing means questioning our own hierarchy of care — who decided sexual health matters less?",
+    "Strong patterns to call out. Anyone who put 'his goals' (#1) or 'his own words for his diagnosis' (#3) at the very top of Part 1 is doing exactly what the chapter asks of us — building care AROUND the person, not around the diagnosis. The relational items are the foundation; the clinical items in Part 2 give us the data, but they only become CARE when we know who Mr. M is. The single most common mistake in initial encounters is jumping straight to symptoms, meds, EF, and history — the clinical script — and forgetting that the man across from us is more than his ejection fraction. Emancipatory nursing means knowing the WHOLE person — Mr. M's heart failure is treated; Mr. M is collaborated WITH.",
 };
 
 module.exports = { PHASE1, PHASE2, PHASE3 };

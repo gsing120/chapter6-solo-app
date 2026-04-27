@@ -339,8 +339,11 @@ const TIMERS = {
 };
 
 /* ─── "Emancipatory ideal" pyramid ranking ─────────────────── */
-// Used to score students — prioritizes sexual health for bonus points.
-const IDEAL_RANKING = { 1: 1, 4: 2, 9: 3, 3: 4, 6: 5, 8: 6, 5: 7, 7: 8, 10: 9, 2: 10 };
+// Mr. M initial-encounter priorities (textbook Activity 3).
+// Items 1-5 = relational/contextual (Part A); 6-10 = clinical/structural (Part B).
+// Within Part A, "his goals" / "his own words" / "values" rank highest —
+// they're what the chapter calls "knowing the whole person."
+const IDEAL_RANKING = { 1: 1, 3: 2, 2: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10 };
 
 /* ─── State ─────────────────────────────────────────────────── */
 const state = {
@@ -558,9 +561,9 @@ async function emitScoreboard(phaseKey, onDone) {
       : '(no scoring students yet)';
 
   const phaseLabels = {
-    ct: 'Critical Thinking (engagement points for submitting answers)',
-    mvf: 'Myth vs Fact (correct answers)',
-    pyramid: 'Priority Pyramid (emancipatory ranking bonus)',
+    ct: 'Critical Thinking — heat warnings & at-risk older adults (AI-graded)',
+    mvf: "Myth vs Fact — Emily Grayson's skin care education",
+    pyramid: 'Priority Pyramid — initial encounter with Mr. M',
   };
 
   const prompt = `You are the ARTIFICIAL NURSE — a warm, comedic nursing educator roasting and celebrating a live classroom leaderboard.
@@ -759,7 +762,7 @@ async function runCTAISummary() {
     .map((a) => a.name)
     .filter((v, i, arr) => arr.indexOf(v) === i);
 
-  const prompt = `You are the ARTIFICIAL NURSE — a sassy, warm nursing educator analyzing student responses about thermoregulation in older adults.
+  const prompt = `You are the ARTIFICIAL NURSE — a sassy, warm nursing educator analyzing student responses to textbook Critical Thinking Question 3 (BC heat warnings, at-risk older adults).
 
 SCENARIO: ${PHASE1.scenario}
 
@@ -833,15 +836,15 @@ async function gradeCTResponses() {
     )
     .join('\n');
 
-  const prompt = `You are grading nursing student responses for Chapter 6 (thermoregulation, emancipatory approach in older adults).
+  const prompt = `You are grading nursing student responses for textbook Chapter 6 Critical Thinking Q3 (BC heat warnings, at-risk older adults, emancipatory critique).
 
 GRADING RUBRIC (strict, per response):
 - 0: empty, troll, or completely irrelevant
 - 1: vague / off-topic / single word
-- 2: on-topic but very surface / no clinical detail
-- 3: relevant with basic clinical reasoning
-- 4: clear clinical reasoning with specifics (age-related change, factor, or intervention named correctly)
-- 5: strong clinical reasoning + emancipatory lens (autonomy, social determinants, challenging ageism, collaboration)
+- 2: on-topic but very surface / no specific reasoning
+- 3: relevant with basic reasoning
+- 4: specific reasoning — names a real at-risk group, barrier, or concrete nursing action
+- 5: specific reasoning + emancipatory lens (autonomy, social determinants, structural critique, collaborating WITH the patient)
 
 RESPONSES:
 ${numbered}
@@ -886,9 +889,21 @@ function enterMythVsFact() {
   state.mvf.currentIndex = 0;
   state.subPhase = 'mvf_intro';
   broadcastState();
-  emitTransitionJoke('Myth vs Fact').finally(() => {
-    startNarrationWait(() => startMVFStatement(0));
+  emitTransitionJoke('Emily Grayson — Skin Care Myth vs Fact').finally(() => {
+    startNarrationWait(() => showEmilyContext());
   });
+}
+
+function showEmilyContext() {
+  state.subPhase = 'mvf_context';
+  broadcastState();
+  clearAudio();
+  io.emit('mvf:context', {
+    title: PHASE2.title,
+    context: PHASE2.emilyContext,
+  });
+  speakNarration(PHASE2.emilyContext, 'mvf_context');
+  startNarrationWait(() => startMVFStatement(0));
 }
 
 function startMVFStatement(index) {
@@ -936,7 +951,7 @@ async function revealMVF(index) {
   const wrongAnswer = stmt.answer === 'MYTH' ? 'FACT' : 'MYTH';
   const wrongCount = stmt.answer === 'MYTH' ? factCount : mythCount;
 
-  const prompt = `You are Nurse Mike — comedy-roast nursing educator. The class just voted on a myth-vs-fact statement.
+  const prompt = `You are the ARTIFICIAL NURSE — comedy-roast nursing educator. The class just voted on a myth-vs-fact statement about person-centred SKIN CARE EDUCATION for Emily Grayson, an 83-year-old avid gardener (textbook Chapter 6 Activity 2).
 
 STATEMENT: "${stmt.text}"
 CORRECT: ${stmt.answer}
@@ -947,8 +962,8 @@ Emancipatory angle: ${stmt.emancipatory}
 Write a SHORT 2-3 sentence spicy-but-warm reaction. REQUIREMENTS:
 - If >30% got it wrong, OPEN with a playful ROAST (big-sibling energy, never mean).
 - If <=30% wrong, lead with a funny PRAISE.
-- Punch in WHY with ONE clinical fact.
-- Close with the emancipatory one-liner.
+- Punch in WHY with ONE specific clinical or person-centred-care fact (skin aging, sun protection, ABCDE, social determinants, teach-back).
+- Close with the emancipatory one-liner about Emily's autonomy / dignity / lived experience.
 - No emojis. STRICT MAX 50 words.`;
 
   const roast = await callGemini(prompt, PHASE2.fallbackRoasts[stmt.id]);
@@ -970,12 +985,12 @@ async function runMVFFinalSummary() {
     .map((s, i) => `${i + 1}. "${s.text}" — ${state.mvf.reveals[s.id]?.pctCorrect ?? 0}% correct`)
     .join('\n');
 
-  const prompt = `You are Nurse Mike wrapping up a 6-statement myth-vs-fact game. Results:
+  const prompt = `You are the ARTIFICIAL NURSE wrapping up a 10-statement myth-vs-fact round on PERSON-CENTRED SKIN CARE EDUCATION for Emily Grayson, an 83-year-old gardener (textbook Chapter 6 Activity 2). Results:
 ${lines}
 
 Give a warm, funny 3-4 sentence wrap-up that:
-1. Names which statement(s) tripped up the class most with a quick ageism joke
-2. Reinforces emancipatory nursing in ONE punch line
+1. Names which statement(s) tripped up the class most — connect to where paternalism / ageism crept in around Emily
+2. Reinforces the emancipatory message in ONE punch line: education that starts with HER (her routine, her budget, her self-knowledge)
 3. Ends with encouragement + one powerful one-liner.
 No emojis. STRICT MAX 80 words.`;
 
@@ -997,9 +1012,21 @@ function enterPriorityPyramid() {
   state.phase = 'PRIORITY_PYRAMID';
   state.subPhase = 'pyramid_intro';
   broadcastState();
-  emitTransitionJoke('Priority Pyramid').finally(() => {
-    startNarrationWait(() => startPyramidPart('A'));
+  emitTransitionJoke('Mr. M — Initial Encounter Priority Pyramid').finally(() => {
+    startNarrationWait(() => showMrMContext());
   });
+}
+
+function showMrMContext() {
+  state.subPhase = 'pyramid_context';
+  broadcastState();
+  clearAudio();
+  io.emit('pyramid:context', {
+    title: PHASE3.title,
+    context: PHASE3.mrMContext,
+  });
+  speakNarration(PHASE3.mrMContext, 'pyramid_context');
+  startNarrationWait(() => startPyramidPart('A'));
 }
 
 // Pyramid split into halves of 5 items each.
@@ -1075,13 +1102,21 @@ function namedSubmissions() {
 }
 
 function scorePyramid(ranking) {
-  // Emancipatory bonus: reward placing sexual health (#3, #8) HIGH.
+  // Emancipatory bonus (Mr. M relational practice): reward placing the
+  // RELATIONAL CORE items at the very top within Part A.
+  //   #1 = his goals
+  //   #3 = his own words for his diagnosis
+  //   #2 = his values / what gives his life meaning
+  // These three are the heart of "knowing the whole person."
   const rankBonus = { 1: 20, 2: 15, 3: 10, 4: 7, 5: 5 };
+  const relationalCore = new Set([1, 2, 3]);
   let pts = 0;
   for (const r of ranking) {
-    if (r.id === 3 || r.id === 8) pts += rankBonus[r.rank] || 0;
+    if (relationalCore.has(r.id) && r.rank <= 5) {
+      pts += rankBonus[r.rank] || 0;
+    }
   }
-  // Small correctness bonus vs "ideal" ranking for fun
+  // Small correctness bonus vs the ideal ranking
   for (const r of ranking) {
     const ideal = IDEAL_RANKING[r.id];
     if (ideal && Math.abs(ideal - r.rank) <= 1) pts += 2;
@@ -1113,28 +1148,28 @@ async function runPyramidAI() {
     .map((cid) => state.students[cid]?.name)
     .filter(Boolean);
 
-  const prompt = `You are the ARTIFICIAL NURSE — a warm, funny, perceptive nursing educator analyzing STUDENT-INDIVIDUAL priority rankings for Chapter 6 on older adult care.
+  const prompt = `You are the ARTIFICIAL NURSE — a warm, funny, perceptive nursing educator analyzing INDIVIDUAL STUDENT pyramid rankings for Chapter 6 Activity 3 (Mr. M, 70yo with heart failure, INITIAL ENCOUNTER, relational practice).
 
-INTERVENTIONS:
+THE 10 ITEMS (1-5 are RELATIONAL/CONTEXTUAL "who is Mr. M"; 6-10 are CLINICAL/STRUCTURAL "what's happening to him"):
 ${interventionsList}
 
-INDIVIDUAL STUDENT RANKINGS:
+INDIVIDUAL STUDENT RANKINGS (top3 = first three things they said they'd want to know):
 ${lines}
 
 Write a lively 6-8 sentence consolidated analysis that:
-1. Names 1-3 students whose pyramids show strong emancipatory thinking (esp. those who ranked sexual health #3 or #8 high) with playful praise
-2. Calls out the pattern IF sexual health landed near the bottom — joke about the ageism sneaking in
-3. Notes the most common top priority and bottom priority
-4. Ties to Chapter 6: holistic care = ALL systems, including sexuality
-5. Reinforces emancipatory nursing: autonomy, challenging bias, social determinants
-6. End with: "Emancipatory nursing means questioning our own hierarchy of care — who decided sexual health matters less?"
+1. Names 1-3 students whose Part 1 ranking shows strong relational practice — especially anyone who placed #1 (his goals), #3 (his own words for his diagnosis), or #2 (his values) at the very top — with playful praise
+2. Calls out the pattern IF the class jumped straight to clinical items (#6 symptoms, #7 meds, #9 history) over relational ones — joke about how easy it is to slip into "treat the diagnosis, not the person"
+3. Notes the most common Part 1 top priority and Part 2 top priority
+4. Ties to the textbook's question: knowing the WHOLE person makes clinical care possible, not the other way around
+5. Reinforces emancipatory nursing: collaborating WITH Mr. M, not assessing him AT
+6. End with: "Mr. M's heart failure is treated. Mr. M is collaborated WITH."
 
 HARD RULES:
 - Only reference these student names: ${submitterNames.length ? submitterNames.join(', ') : '(no submissions — do NOT name-drop anyone)'}
 - NEVER use placeholder names like "Taylor", "Jordan", "Sam", "Alex", "Jamie".
 - If fewer than the requested number of strong pyramids exist, only name the ones that do.
 
-Tone: nursing-comedy-roast with teeth. No emojis. STRICT MAX 130 words — keep it punchy.`;
+Tone: nursing-comedy-roast with teeth. No emojis. STRICT MAX 140 words — keep it punchy.`;
 
   const analysis = await callGemini(prompt, PHASE3.fallbackAnalysis);
   state.pyramid.analysis = analysis;
@@ -1169,21 +1204,21 @@ async function enterComplete() {
   // Generate live "Key Takeaways" tying everything together
   const prompt = `You are the ARTIFICIAL NURSE wrapping up a 30-minute classroom activity on Chapter 6 (complex care of older adults).
 
-The class just completed:
-- Phase 1: Critical Thinking (hypothermia case, emancipatory analysis)
-- Phase 2: Myth vs Fact (10 statements on sexual health, thermoregulation, polypharmacy, atypical presentations, social isolation)
-- Phase 3: Priority Pyramid (individual ranking of 10 interventions, sexual-health bias check)
+The class just completed the three textbook end-of-chapter prompts:
+- Phase 1: Critical Thinking Q3 — at-risk older adults during BC heat warnings; who falls through the cracks of public messaging
+- Phase 2: Emancipatory Activity 2 — person-centred skin care education with Emily Grayson, 83yo gardener
+- Phase 3: Emancipatory Activity 3 — initial encounter with Mr. M, 70yo with heart failure; relational practice
 
 Generate a concise CLOSING SUMMARY (3-4 sentences, MAX 90 words) that:
-1. Names the THREE most important clinical takeaways from Chapter 6 (one each from skin/circulation/respiration, thermoregulation, sex/intimacy)
+1. Names the THREE biggest takeaways — one tying to each phase (heat/at-risk pops, skin/Emily, heart failure/Mr. M)
 2. Explicitly names the EMANCIPATORY message: holistic care, autonomy, social determinants, challenging ageism
-3. Calls back to Margaret (the case patient) with one specific reminder
+3. Names Emily Grayson AND Mr. M with one specific reminder each
 4. Closes with one warm, motivating one-liner.
 
 No emojis. Tone: warm, clear, end-of-class energy.`;
 
   const fallback =
-    "Three things to take with you. One: in older adults, atypical IS typical — a 1°C bump above baseline, new confusion, or skipping meals can signal serious illness, so know your patient's baseline. Two: medications and social determinants like income and isolation are clinical issues, not just psychosocial ones — Margaret's hypothermia was as much about her thermostat as her thermoregulation. Three: sexual health and intimacy do not retire — silence on these topics is ageism in scrubs. Emancipatory nursing means we ask, we listen, we collaborate WITH the patient — never around them. Margaret left the ED with a heating-program referral, a med review, and a nurse who took her whole story seriously. That's the standard. Now go practice it.";
+    "Three things to take with you. One: when a heat warning goes out, the older adults the public-health release names are the ones it least often reaches — the renter on the fourth floor with no AC, the woman widowed last year, the man on a fixed income. Nursing is who closes that gap. Two: with Emily, person-centred skin care starts with what she already does — her routine, her budget, her self-knowledge — and treats the new spot on her hand seriously. Three: with Mr. M, the heart failure is treated; Mr. M is collaborated with — his goals, his words, his values come BEFORE the ejection fraction. Emancipatory nursing means autonomy, social determinants, and refusing to let age stereotypes shrink our scope of care. Now go practice it.";
 
   const summary = await callGemini(prompt, fallback, 14000);
   clearAudio();

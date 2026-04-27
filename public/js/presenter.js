@@ -299,9 +299,9 @@ socket.on('ct:scenario', ({ scenario }) => {
   currentCTQId = null;
   stage.innerHTML = `
     <div class="scenario-card">
-      <span class="seg-badge seg-1" style="margin-bottom:10px">Phase 1 · Critical Thinking</span>
+      <span class="seg-badge seg-1" style="margin-bottom:10px">Phase 1 · Critical Thinking Q3 — Heat Warnings</span>
       <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
-        Emancipatory lens: this isn't just a clinical case — it's about autonomy, social determinants, and challenging assumptions about older adults.
+        Emancipatory lens: top-down public-health messaging assumes everyone has equal access to act on the advice. Whose autonomy and lived experience is at the centre — and whose isn't?
       </p>
       <h2>Scenario · Read aloud</h2>
       <div class="scenario-text">${escapeHtml(scenario)}</div>
@@ -731,6 +731,34 @@ socket.on('joke', ({ joke, nextPhase }) => {
   `;
   typewriter($('jokeTextEl'), joke, 30);
   speak(joke);
+});
+
+/* ─── Phase 2 context: Emily Grayson scenario ───────────────── */
+socket.on('mvf:context', ({ title, context }) => {
+  stage.innerHTML = `
+    <div class="scenario-card">
+      <span class="seg-badge seg-2" style="margin-bottom:10px">Phase 2 · Emancipatory Activity 2</span>
+      <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
+        Emancipatory lens: education that begins with what Emily already knows, does, and values — not what we think she should hear.
+      </p>
+      <h2>${escapeHtml(title || 'Meet Emily')}</h2>
+      <div class="scenario-text">${escapeHtml(context)}</div>
+    </div>
+  `;
+});
+
+/* ─── Phase 3 context: Mr. M scenario ──────────────────────── */
+socket.on('pyramid:context', ({ title, context }) => {
+  stage.innerHTML = `
+    <div class="scenario-card">
+      <span class="seg-badge seg-3" style="margin-bottom:10px">Phase 3 · Emancipatory Activity 3</span>
+      <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
+        Emancipatory lens: knowing the WHOLE person makes clinical care possible — not the other way around.
+      </p>
+      <h2>${escapeHtml(title || 'Meet Mr. M')}</h2>
+      <div class="scenario-text">${escapeHtml(context)}</div>
+    </div>
+  `;
 });
 
 /* ─── COMPLETE ─────────────────────────────────────────── */
