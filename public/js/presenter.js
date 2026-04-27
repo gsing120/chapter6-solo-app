@@ -851,8 +851,14 @@ socket.on('narration:waiting', () => {
   btnNext.textContent = 'Next →';
   btnNext.classList.add('waiting-pulse');
 });
+socket.on('narration:audio-done', () => {
+  // Voice finished; presenter still drives the advance manually.
+  btnNext.textContent = 'Next → (voice done)';
+  btnNext.classList.add('waiting-pulse');
+});
 socket.on('narration:advanced', () => {
   btnNext.classList.remove('waiting-pulse');
+  btnNext.textContent = 'Next →';
 });
 
 // Server raises this when a gameplay timer hits 0 and is waiting for click.

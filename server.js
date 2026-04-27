@@ -242,23 +242,24 @@ function clearAudio() {
 let audioFinishedSeen = false;
 let narrationWait = null; // { onAdvance, advanced, graceMs, hardTimeout }
 
-function startNarrationWait(onAdvance, { graceMs = 2500, hardCapMs = 240000 } = {}) {
-  cancelNarrationWait(); // cancel any prior
+function startNarrationWait(onAdvance, { hardCapMs = 600000 } = {}) {
+  cancelNarrationWait();
   audioFinishedSeen = false;
   const w = {
     onAdvance,
     advanced: false,
-    graceMs,
+    // Hard cap is an emergency safety only (10 min default). It does NOT
+    // function as auto-skip — the presenter is expected to click Next when
+    // the room is ready to move on.
     hardTimeout: setTimeout(() => advanceNarration('hard-timeout'), hardCapMs),
   };
   narrationWait = w;
-  io.emit('narration:waiting', { graceMs });
+  io.emit('narration:waiting', {});
 }
 
 function cancelNarrationWait() {
   if (narrationWait) {
     if (narrationWait.hardTimeout) clearTimeout(narrationWait.hardTimeout);
-    if (narrationWait.graceTimeout) clearTimeout(narrationWait.graceTimeout);
     narrationWait = null;
   }
 }
@@ -267,7 +268,6 @@ function advanceNarration(reason) {
   if (!narrationWait || narrationWait.advanced) return;
   narrationWait.advanced = true;
   if (narrationWait.hardTimeout) clearTimeout(narrationWait.hardTimeout);
-  if (narrationWait.graceTimeout) clearTimeout(narrationWait.graceTimeout);
   const fn = narrationWait.onAdvance;
   narrationWait = null;
   io.emit('narration:advanced', { reason });
@@ -276,13 +276,12 @@ function advanceNarration(reason) {
 }
 
 function onAudioFinished() {
+  // Audio playback queue ran dry. We do NOT auto-advance — the presenter
+  // must click Next. We just signal the client so the Next button can show
+  // an "audio done" visual cue (the existing waiting-pulse already handles
+  // this since narration:waiting fired at the start).
   audioFinishedSeen = true;
-  if (!narrationWait || narrationWait.advanced) return;
-  if (narrationWait.graceTimeout) return; // already scheduled
-  narrationWait.graceTimeout = setTimeout(
-    () => advanceNarration('audio-finished+grace'),
-    narrationWait.graceMs
-  );
+  io.emit('narration:audio-done', {});
 }
 
 const CHAPTER_6_CONTEXT = `
@@ -594,7 +593,7 @@ HARD RULES:
       overall: leaderboard(10),
     });
   }, `scoreboard_${phaseKey}`);
-  startNarrationWait(() => { if (onDone) onDone(); }, { graceMs: 4000 });
+  startNarrationWait(() => { if (onDone) onDone(); });
 }
 
 /* ─── Transition joke ───────────────────────────────────────── */
@@ -1188,7 +1187,7 @@ No emojis. Tone: warm, clear, end-of-class energy.`;
   }, 'closing_takeaways');
   startNarrationWait(() => {
     /* end of session — no auto-advance, just stay here */
-  }, { graceMs: 6000, hardCapMs: 600000 });
+  }, { hardCapMs: 600000 });
 }
 
 /* ─── Artificial Nurse chat: queue + batch + ad-hoc ──────────── */
