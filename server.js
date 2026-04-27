@@ -417,6 +417,8 @@ function publicState() {
       currentIndex: state.mvf.currentIndex,
       totalStatements: PHASE2.statements.length,
     },
+    sessionStartedAt: state.sessionStartedAt || null,
+    sessionBudgetMs: 30 * 60 * 1000,
   };
 }
 
@@ -451,6 +453,7 @@ function resetSessionState() {
   };
   state.chatHistory = [];
   state.chatQueue = [];
+  state.sessionStartedAt = null;
   for (const s of Object.values(state.students)) {
     s.scores = { ct: 0, mvf: 0, pyramid: 0, total: 0 };
     s.mvfAnswers = {};
@@ -708,6 +711,8 @@ function goBack() {
 function enterCriticalThinking() {
   state.phase = 'CRITICAL_THINKING';
   state.subPhase = 'ct_scenario';
+  // Stamp the session start so the presenter sees a single 30-min clock
+  state.sessionStartedAt = Date.now();
   broadcastState();
   clearAudio();
   io.emit('ct:scenario', { scenario: PHASE1.scenario });

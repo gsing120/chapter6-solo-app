@@ -129,9 +129,46 @@ async function ensureQR() {
 ensureQR();
 
 /* ─── State dispatch ────────────────────────────────────────── */
+/* ─── Session clock (30-min budget per the rubric) ─────────── */
+const sessionClockEl = document.getElementById('sessionClock');
+const sessionClockWrap = document.getElementById('sessionClockWrap');
+let sessionStartedAt = null;
+let sessionBudgetMs = 30 * 60 * 1000;
+function fmtClock(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+setInterval(() => {
+  if (!sessionStartedAt) {
+    sessionClockWrap.classList.add('hidden');
+    return;
+  }
+  sessionClockWrap.classList.remove('hidden');
+  const elapsed = Date.now() - sessionStartedAt;
+  const budget = sessionBudgetMs;
+  if (elapsed >= budget) {
+    const over = elapsed - budget;
+    sessionClockEl.textContent = `+${fmtClock(over)} OVER · ${fmtClock(budget)} budget`;
+    sessionClockWrap.classList.add('over');
+    sessionClockWrap.classList.remove('warn');
+  } else {
+    sessionClockEl.textContent = `${fmtClock(elapsed)} / ${fmtClock(budget)}`;
+    sessionClockWrap.classList.remove('over');
+    if (budget - elapsed <= 5 * 60 * 1000) {
+      sessionClockWrap.classList.add('warn');
+    } else {
+      sessionClockWrap.classList.remove('warn');
+    }
+  }
+}, 1000);
+
 socket.on('state:update', (s) => {
   studentCount.textContent = s.studentCount;
   groupCount.textContent = Object.keys(s.groups || {}).length;
+  sessionStartedAt = s.sessionStartedAt || null;
+  if (s.sessionBudgetMs) sessionBudgetMs = s.sessionBudgetMs;
   applyPhase(s);
 });
 

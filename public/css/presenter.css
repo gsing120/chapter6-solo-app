@@ -34,6 +34,32 @@
   font-weight: 700;
   color: var(--teal);
 }
+.session-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+.session-clock.hidden { display: none; }
+.session-clock-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+.session-clock-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.session-clock.over { background: rgba(255, 60, 172, 0.15); border-color: var(--magenta); }
+.session-clock.over .session-clock-value { color: var(--magenta); }
+.session-clock.warn { background: rgba(255, 217, 61, 0.12); border-color: rgba(255, 217, 61, 0.4); }
+.session-clock.warn .session-clock-value { color: var(--gold); }
 
 /* ─── Persistent QR corner (always visible after start) ────── */
 .qr-corner {
