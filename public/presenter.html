@@ -13,19 +13,25 @@
   <div class="blob"></div><div class="blob"></div><div class="blob"></div>
 </div>
 
-<!-- Persistent QR code corner (shown once session starts) -->
-<div id="qrCorner" class="qr-corner hidden-corner">
-  <img id="qrCornerImg" src="" alt="">
-  <div>
-    <div class="qr-label">Scan to join</div>
-    <div class="qr-url" id="qrCornerUrl"></div>
+<!-- Persistent QR code corner (collapsed chip, expands on hover) -->
+<div id="qrCorner" class="qr-corner hidden-corner" tabindex="0" title="Scan to join — hover to expand">
+  <span class="qr-chip">▦</span>
+  <div class="qr-panel">
+    <img id="qrCornerImg" src="" alt="">
+    <div>
+      <div class="qr-label">Scan to join</div>
+      <div class="qr-url" id="qrCornerUrl"></div>
+    </div>
   </div>
 </div>
 
-<!-- Persistent group-leaderboard widget (always visible after first score) -->
-<div id="groupBoard" class="group-board hidden-board">
-  <div class="group-board-title">Group Scores</div>
-  <div id="groupBoardList" class="group-board-list"></div>
+<!-- Persistent group-leaderboard widget (collapsed chip, expands on hover) -->
+<div id="groupBoard" class="group-board hidden-board" tabindex="0" title="Group scores — hover to expand">
+  <span class="group-board-chip" id="groupBoardChip">🏆</span>
+  <div class="group-board-panel">
+    <div class="group-board-title">Group Scores</div>
+    <div id="groupBoardList" class="group-board-list"></div>
+  </div>
 </div>
 
 <div class="presenter-shell">

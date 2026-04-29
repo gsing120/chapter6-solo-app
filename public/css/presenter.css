@@ -12,22 +12,58 @@
 }
 
 /* ─── Persistent group leaderboard widget ──────────────────── */
+/* Group leaderboard widget — collapsed chip by default, expands on hover */
 .group-board {
   position: fixed;
   top: 12px;
   left: 12px;
   z-index: 50;
-  width: 240px;
+  width: 56px;             /* collapsed (chip) width */
+  height: 56px;
+  overflow: hidden;
+  padding: 0;
+  background: rgba(6, 8, 15, 0.92);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;     /* circular when collapsed */
+  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease, padding 0.25s ease;
+  cursor: pointer;
+}
+.group-board:hover, .group-board:focus-within {
+  width: 260px;
+  height: auto;
   max-height: calc(100vh - 24px);
   overflow-y: auto;
   padding: 12px 14px;
-  background: rgba(6, 8, 15, 0.92);
-  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 .group-board.hidden-board { display: none; }
+
+/* Chip face: shown when collapsed; hidden on hover */
+.group-board-chip {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: var(--gold);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+.group-board:hover .group-board-chip,
+.group-board:focus-within .group-board-chip { display: none; }
+
+/* Full panel: hidden when collapsed; shown on hover */
+.group-board-panel {
+  display: none;
+}
+.group-board:hover .group-board-panel,
+.group-board:focus-within .group-board-panel {
+  display: block;
+}
+
 .group-board-title {
   font-family: var(--font-display);
   font-size: 0.78rem;
@@ -56,6 +92,73 @@
 .gb-name small { color: var(--text-dim); margin-left: 4px; font-weight: 400; }
 .gb-pts { font-family: var(--font-display); font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; }
 .gb-pts.neg { color: var(--coral); }
+
+/* ─── AI Loading card (cycling phrases + fake progress) ────── */
+.loading-card {
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+.loading-card .loading-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+}
+.loading-card .loading-badge .pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--teal);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.loading-card .loading-hint {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.loading-card .loading-phrase {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  color: var(--text-primary);
+  min-height: 2.2em;
+  max-width: 28ch;
+  transition: opacity 0.35s ease;
+}
+.loading-card .loading-phrase.fade-out { opacity: 0; }
+.loading-card .loading-progress-wrap {
+  width: 100%;
+  max-width: 420px;
+  height: 8px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.loading-card .loading-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--teal), var(--blue), var(--magenta));
+  background-size: 200% 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  animation: progressShimmer 2s linear infinite;
+}
+@keyframes progressShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
 
 /* ─── Per-scenario audio buttons (Stop / Replay) ───────────── */
 .scenario-audio-controls {
@@ -227,21 +330,53 @@
 .session-clock.warn .session-clock-value { color: var(--gold); }
 
 /* ─── Persistent QR corner (always visible after start) ────── */
+/* QR corner — collapsed chip by default, expands on hover */
 .qr-corner {
   position: fixed;
   top: 12px;
   right: 12px;
   z-index: 50;
-  padding: 10px;
-  background: rgba(6, 8, 15, 0.88);
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  padding: 0;
+  background: rgba(6, 8, 15, 0.92);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: 28px;
   backdrop-filter: blur(18px);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  cursor: pointer;
+  transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease, padding 0.25s ease;
 }
+.qr-corner:hover, .qr-corner:focus-within {
+  width: auto;
+  height: auto;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  justify-content: flex-start;
+}
+/* Collapsed face: small QR-glyph chip */
+.qr-corner .qr-chip {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--teal);
+}
+.qr-corner:hover .qr-chip, .qr-corner:focus-within .qr-chip { display: none; }
+
+/* Expanded face: hidden by default */
+.qr-corner .qr-panel { display: none; align-items: center; gap: 10px; }
+.qr-corner:hover .qr-panel,
+.qr-corner:focus-within .qr-panel { display: flex; }
+
 .qr-corner img { width: 96px; height: 96px; border-radius: 8px; display: block; }
 .qr-corner .qr-label {
   font-size: 0.7rem;
@@ -281,8 +416,11 @@
   scrollbar-color: var(--glass-border) transparent;
 }
 /* When QR corner is visible, reserve right-padding at the top so it doesn't cover text */
+/* Widgets are now collapsed chips by default — no big stage padding
+   needed. Tiny right margin is sufficient to stay clear of the chip. */
 body.presenter.qr-on .p-stage {
-  padding-right: 240px;
+  padding-right: 78px; /* 56px chip + 12px gap + small buffer */
+  padding-left: 78px;  /* group-board chip on the left */
 }
 body.presenter.qr-on .p-stage > * {
   max-width: 100%;

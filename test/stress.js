@@ -252,10 +252,21 @@ async function main() {
   });
 
   // -------- Phase 2: MvF --------
-  await check('Phase 2: scoreboard advance → joke (auto-transition to MvF)', async () => {
-    // Single click after CT scoreboard now jumps directly to Phase 2 joke
+  // Regression test: rapid Next clicks during phase-transition AI gen
+  // window must NOT cause over-advance. Send 3 clicks in quick succession
+  // and verify we land on MvF (joke fires) rather than skipping to Pyramid.
+  await check('Regression: rapid Next clicks during CT→MvF transition stay on MvF', async () => {
+    // Set up a one-shot listener for joke + a phase observer
+    let landedPhase = null;
+    presenter.on('state:update', (s) => { landedPhase = s.phase; });
+    // Three rapid clicks during the joke-generation window
     presenter.emit('presenter:next');
+    presenter.emit('presenter:next');
+    presenter.emit('presenter:next');
+    // Wait for joke to arrive (proves we landed on MvF, not Pyramid/Complete)
     await waitFor(students[0], 'joke', 30000);
+    // Phase MUST be MYTH_VS_FACT, not PRIORITY_PYRAMID or COMPLETE
+    assert(landedPhase === 'MYTH_VS_FACT', `expected MYTH_VS_FACT, got ${landedPhase}`);
   });
 
   await check('Phase 2: joke → Emily context', async () => {

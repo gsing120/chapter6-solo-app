@@ -197,6 +197,76 @@ socket.on('state:update', (s) => {
 /* ─── Persistent group-leaderboard widget ──────────────────── */
 const groupBoard = document.getElementById('groupBoard');
 const groupBoardList = document.getElementById('groupBoardList');
+/* ─── AI loading card (cycling phrases + fake progress) ───── */
+const LOADING_PHRASES = [
+  'Cross-referencing Chapter 6…',
+  'Tallying group responses…',
+  'Checking the emancipatory lens…',
+  'Looking for the right roast…',
+  'Connecting to social determinants…',
+  'Weighing the at-risk groups…',
+  'Auscultating the data…',
+  'Drafting a punchy comeback…',
+  'Filtering the ageism out…',
+  'Centering the patient…',
+];
+let _loadingState = null;
+function showLoadingCard(hint) {
+  // Don't replace a real content card if one is already up — only show
+  // loading inside the stage if nothing else is rendered or if we're
+  // explicitly in a between-state.
+  stage.innerHTML = `
+    <div class="loading-card">
+      <div class="loading-badge"><span class="pulse-dot"></span> Artificial Nurse</div>
+      <div class="loading-phrase" id="loadingPhraseEl">${escapeHtml(LOADING_PHRASES[0])}</div>
+      <div class="loading-progress-wrap">
+        <div class="loading-progress-fill" id="loadingProgressEl"></div>
+      </div>
+      ${hint ? `<div class="loading-hint">${escapeHtml(hint)}</div>` : ''}
+    </div>
+  `;
+  let idx = 0;
+  const phraseEl = document.getElementById('loadingPhraseEl');
+  const progressEl = document.getElementById('loadingProgressEl');
+  // Cycle phrases every ~1.6s with fade
+  const cycleInterval = setInterval(() => {
+    if (!phraseEl || !document.body.contains(phraseEl)) return;
+    phraseEl.classList.add('fade-out');
+    setTimeout(() => {
+      idx = (idx + 1) % LOADING_PHRASES.length;
+      phraseEl.textContent = LOADING_PHRASES[idx];
+      phraseEl.classList.remove('fade-out');
+    }, 350);
+  }, 1600);
+  // Fake progress bar: smooth fill 0 → 85% over ~8s
+  let pct = 0;
+  const targetMax = 85;
+  const totalMs = 8000;
+  const tickMs = 100;
+  const progressInterval = setInterval(() => {
+    if (!progressEl || !document.body.contains(progressEl)) return;
+    pct = Math.min(targetMax, pct + (targetMax / (totalMs / tickMs)));
+    progressEl.style.width = `${pct}%`;
+  }, tickMs);
+  _loadingState = { cycleInterval, progressInterval, progressEl };
+}
+function hideLoadingCard() {
+  if (!_loadingState) return;
+  // Snap progress to 100% briefly before unmount
+  if (_loadingState.progressEl && document.body.contains(_loadingState.progressEl)) {
+    _loadingState.progressEl.style.width = '100%';
+  }
+  clearInterval(_loadingState.cycleInterval);
+  clearInterval(_loadingState.progressInterval);
+  _loadingState = null;
+}
+socket.on('loading:start', ({ hint }) => {
+  showLoadingCard(hint);
+});
+socket.on('loading:end', () => {
+  hideLoadingCard();
+});
+
 socket.on('group:scores', ({ groups }) => {
   if (!groupBoard || !groupBoardList) return;
   if (!groups || groups.length === 0) {
@@ -204,8 +274,9 @@ socket.on('group:scores', ({ groups }) => {
     return;
   }
   groupBoard.classList.remove('hidden-board');
+  // Render ALL groups (no slice). CSS handles overflow with max-height +
+  // overflow-y: auto when expanded.
   groupBoardList.innerHTML = groups
-    .slice(0, 10)
     .map((g, i) => {
       const cls = i < 3 ? `gb-${i + 1}` : '';
       const ptsCls = g.total < 0 ? 'neg' : '';
@@ -218,6 +289,19 @@ socket.on('group:scores', ({ groups }) => {
       `;
     })
     .join('');
+  // Update the chip face: show top group's points compactly
+  const chip = document.getElementById('groupBoardChip');
+  if (chip) {
+    if (groups.length > 0) {
+      const top = groups[0];
+      // Use trophy emoji + total of top group as compact summary
+      chip.textContent = `${top.total}`;
+      chip.style.fontSize = '1rem';
+    } else {
+      chip.textContent = '🏆';
+      chip.style.fontSize = '1.4rem';
+    }
+  }
 });
 
 socket.on('reset', () => {

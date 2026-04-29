@@ -323,6 +323,20 @@ function capLines(text, soft = 8, hard = 10) {
   return (out || t.slice(0, maxChars)).trim();
 }
 
+/**
+ * Wrap an async block with loading:start / loading:end events so the
+ * client can render a "fake but psychological" progress card during
+ * AI latency windows that would otherwise show a blank screen.
+ */
+async function withLoading(label, hint, fn) {
+  io.emit('loading:start', { label, hint });
+  try {
+    return await fn();
+  } finally {
+    io.emit('loading:end', { label });
+  }
+}
+
 async function callGemini(prompt, fallbackText, timeoutMs = 14000) {
   if (!ai) return fallbackText;
   try {
@@ -414,6 +428,10 @@ const state = {
   // Last narration emitted per scenario label, for "Replay" feature.
   // label → text
   lastNarration: {},
+  // True while a phase-transition is awaiting AI generation (joke,
+  // takeaways, etc). While locked, presenter:next clicks are silently
+  // ignored to prevent over-advancing through phases.
+  transitionLocked: false,
 
   timer: {
     label: null,
@@ -554,6 +572,7 @@ function resetSessionState() {
   state.phaseStartedAt = null;
   state.audioEnabled = true;
   state.lastNarration = {};
+  state.transitionLocked = false;
   for (const s of Object.values(state.students)) {
     s.scores = { ct: 0, mvf: 0, pyramid: 0, total: 0 };
     s.mvfAnswers = {};
@@ -707,7 +726,11 @@ HARD RULES:
       ? `Top groups this round: ${top3Groups.map((g) => `"${g.group}"`).join(', ')}. Reading the chapter AND the room — that's the move.`
       : `Tight scores everywhere. Pick it up next phase — emancipatory nursing waits for no one.`;
 
-  const praise = await callGemini(prompt, fallback, 10000);
+  const praise = await withLoading(
+    `scoreboard_${phaseKey}_praise`,
+    `Tallying the ${phaseKey.toUpperCase()} scoreboard…`,
+    () => callGemini(prompt, fallback, 10000)
+  );
 
   clearAudio();
   state.lastNarration[`scoreboard_${phaseKey}`] = praise;
@@ -734,10 +757,14 @@ async function emitTransitionJoke(nextPhaseLabel) {
     "I told my patient sexual health doesn't stop at 70. She said 'honey, I know, the nurses keep forgetting to ask.'",
     "Why is older-adult skin like a first-year nursing student? Thin, sensitive, and bruises if you look at it wrong.",
   ];
-  const joke = await callGemini(
-    prompt,
-    fallbacks[Math.floor(Math.random() * fallbacks.length)],
-    8000
+  const joke = await withLoading(
+    'transition_joke',
+    `Setting up: ${nextPhaseLabel}`,
+    () => callGemini(
+      prompt,
+      fallbacks[Math.floor(Math.random() * fallbacks.length)],
+      8000
+    )
   );
   clearAudio();
   speakAndShowSynced(joke, () => {
@@ -955,7 +982,11 @@ Write a SHORT 2-3 sentence reaction:
     ? `Most of you got "${correctAnswerLabel}" — nice. That's the kind of recall that turns a heatwave from a tragedy into a managed event.`
     : `Most of you missed "${correctAnswerLabel}" — and that's exactly the gap the heat advisory doesn't close. Emancipatory nursing means we KNOW these answers cold so the older adults at risk don't pay for our blank.`;
 
-  const roast = await callGemini(prompt, fallback, 9000);
+  const roast = await withLoading(
+    `ct_reveal_${q.id}`,
+    `Reviewing your answers on Q${index + 1}…`,
+    () => callGemini(prompt, fallback, 9000)
+  );
   state.ct.reveals[q.id].roast = roast;
 
   clearAudio();
@@ -1036,9 +1067,11 @@ function enterMythVsFact() {
   state.phase = 'MYTH_VS_FACT';
   state.mvf.currentIndex = 0;
   state.subPhase = 'mvf_intro';
-  state.phaseStartedAt = Date.now(); // reset 10-min phase clock
+  state.phaseStartedAt = Date.now();
+  state.transitionLocked = true; // block clicks during AI-joke gen
   broadcastState();
   emitTransitionJoke('Emily Grayson — Skin Care Myth vs Fact').finally(() => {
+    state.transitionLocked = false;
     startNarrationWait(() => showEmilyContext());
   });
 }
@@ -1115,7 +1148,11 @@ Write a SHORT 2-3 sentence spicy-but-warm reaction. REQUIREMENTS:
 - Close with the emancipatory one-liner about Emily's autonomy / dignity / lived experience.
 - No emojis. STRICT MAX 50 words.`;
 
-  const roast = await callGemini(prompt, PHASE2.fallbackRoasts[stmt.id]);
+  const roast = await withLoading(
+    `mvf_reveal_${stmt.id}`,
+    `Reviewing the vote…`,
+    () => callGemini(prompt, PHASE2.fallbackRoasts[stmt.id])
+  );
   state.mvf.reveals[stmt.id] = { pctCorrect, roast };
   clearAudio();
   speakAndShowSynced(roast, () => {
@@ -1160,9 +1197,11 @@ No emojis. STRICT MAX 80 words.`;
 function enterPriorityPyramid() {
   state.phase = 'PRIORITY_PYRAMID';
   state.subPhase = 'pyramid_intro';
-  state.phaseStartedAt = Date.now(); // reset 10-min phase clock
+  state.phaseStartedAt = Date.now();
+  state.transitionLocked = true; // block clicks during AI-joke gen
   broadcastState();
   emitTransitionJoke('Mr. M — Initial Encounter Priority Pyramid').finally(() => {
+    state.transitionLocked = false;
     startNarrationWait(() => showMrMContext());
   });
 }
@@ -1348,6 +1387,7 @@ HARD RULES:
 async function enterComplete() {
   state.phase = 'COMPLETE';
   state.subPhase = 'closing_takeaways';
+  state.transitionLocked = true; // block clicks during takeaways gen
   stopTimer();
   broadcastState();
 
@@ -1372,7 +1412,12 @@ HARD RULES:
   const fallback =
     "Three things to take with you. One: when a heat warning goes out, the older adults the public-health release names are the ones it least often reaches — the renter on the fourth floor with no AC, the woman widowed last year, the man on a fixed income. Nursing is who closes that gap. Two: with Emily, person-centred skin care starts with what she already does — her routine, her budget, her self-knowledge — and treats the new spot on her hand seriously. Three: with Mr. M, the heart failure is treated; Mr. M is collaborated with — his goals, his words, his values come BEFORE the ejection fraction. Emancipatory nursing means autonomy, social determinants, and refusing to let age stereotypes shrink our scope of care. Now go practice it.";
 
-  const summary = await callGemini(prompt, fallback, 14000);
+  const summary = await withLoading(
+    'closing_takeaways',
+    'Wrapping up the session…',
+    () => callGemini(prompt, fallback, 14000)
+  );
+  state.transitionLocked = false;
   clearAudio();
   state.lastNarration['closing_takeaways'] = summary;
   speakAndShowSynced(summary, () => {
@@ -1560,6 +1605,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('presenter:next', () => {
+      // 0. Click during a phase-transition AI gen window: silently ignore.
+      //    Prevents over-advancing through phases while a joke / takeaway
+      //    is being generated.
+      if (state.transitionLocked) return;
       // 1. Click during a narration-wait: end the wait now.
       if (narrationWait && !narrationWait.advanced) {
         advanceNarration('presenter-click');
@@ -1584,6 +1633,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('presenter:skip-sub', () => {
+      if (state.transitionLocked) return; // mirror presenter:next guard
       // Skip behaves identically to Next: single-click instant advance.
       if (narrationWait && !narrationWait.advanced) {
         advanceNarration('presenter-skip');
