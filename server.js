@@ -571,6 +571,7 @@ function startTimer(label, seconds, onDone) {
   state.timer.seconds = seconds;
   state.timer.total = seconds;
   state.timer.paused = false;
+  state.timer.onDone = onDone || null;
   io.emit('timer:start', { label, seconds, total: seconds });
 
   state.timer.interval = setInterval(() => {
@@ -582,9 +583,11 @@ function startTimer(label, seconds, onDone) {
       total: state.timer.total,
     });
     if (state.timer.seconds <= 0) {
+      const fn = state.timer.onDone;
+      state.timer.onDone = null;
       stopTimer();
       io.emit('timer:done', { label });
-      if (onDone) onDone();
+      if (fn) fn();
     }
   }, 1000);
 }
@@ -592,6 +595,25 @@ function startTimer(label, seconds, onDone) {
 function stopTimer() {
   if (state.timer.interval) clearInterval(state.timer.interval);
   state.timer.interval = null;
+  state.timer.onDone = null;
+}
+
+// Force the current timer's onDone to fire immediately (single-click skip).
+// Returns true if a timer was running and onDone was invoked.
+function fireTimerNow() {
+  if (!state.timer.interval) return false;
+  const fn = state.timer.onDone;
+  state.timer.onDone = null;
+  state.timer.seconds = 0;
+  io.emit('timer:tick', {
+    label: state.timer.label,
+    seconds: 0,
+    total: state.timer.total,
+  });
+  io.emit('timer:done', { label: state.timer.label });
+  stopTimer();
+  if (fn) fn();
+  return true;
 }
 
 function addTime(seconds) {
@@ -785,7 +807,7 @@ function goBack() {
         return startMVFStatement(i - 1);
       }
       // First statement — back goes to CT summary
-      return runCTAISummary();
+      return runCTSummary();
     }
     if (sp === 'mvf_summary' || sp === 'mvf_summary_processing') {
       return startMVFStatement(PHASE2.statements.length - 1);
@@ -995,7 +1017,9 @@ Do NOT mention any student names. Refer to "the class" generically. No emojis. S
     io.emit('ct:summary', { summary });
   }, 'ct_summary');
   startNarrationWait(() => {
-    emitScoreboard('ct', () => io.emit('ct:awaiting-next', {}));
+    // After CT scoreboard narration ends (or presenter clicks Next),
+    // advance directly to Phase 2. Single click instead of two.
+    emitScoreboard('ct', () => enterMythVsFact());
   });
 }
 
@@ -1128,7 +1152,7 @@ No emojis. STRICT MAX 80 words.`;
     io.emit('mvf:final', { summary });
   }, 'mvf_final');
   startNarrationWait(() => {
-    emitScoreboard('mvf', () => io.emit('mvf:awaiting-next', {}));
+    emitScoreboard('mvf', () => enterPriorityPyramid());
   });
 }
 
@@ -1317,7 +1341,7 @@ HARD RULES:
     });
   }, 'pyramid_analysis');
   startNarrationWait(() => {
-    emitScoreboard('pyramid', () => io.emit('pyramid:awaiting-next', {}));
+    emitScoreboard('pyramid', () => enterComplete());
   });
 }
 
@@ -1547,16 +1571,10 @@ io.on('connection', (socket) => {
         return;
       }
       // 3. Click during a gameplay phase whose timer is STILL running:
-      //    treat as "skip ahead" — fire the same advance the timer would.
+      //    fire its onDone synchronously, then consume any pendingAdvance.
       if (state.timer.interval) {
-        // Force the running timer to expire on the next tick. Its onDone will
-        // either advance immediately or stash a pendingAdvance.
-        state.timer.seconds = 0;
-        // Then immediately consume any pendingAdvance the onDone created.
-        // Use a microtask so the onDone has a chance to register first.
-        setTimeout(() => {
-          if (state.pendingAdvance) consumePendingAdvance();
-        }, 50);
+        fireTimerNow();
+        if (state.pendingAdvance) consumePendingAdvance();
         return;
       }
       // 4. Otherwise: cross-phase advance (between major phases).
@@ -1566,6 +1584,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('presenter:skip-sub', () => {
+      // Skip behaves identically to Next: single-click instant advance.
       if (narrationWait && !narrationWait.advanced) {
         advanceNarration('presenter-skip');
         return;
@@ -1574,7 +1593,10 @@ io.on('connection', (socket) => {
         consumePendingAdvance();
         return;
       }
-      if (state.timer.interval) state.timer.seconds = 1;
+      if (state.timer.interval) {
+        fireTimerNow();
+        if (state.pendingAdvance) consumePendingAdvance();
+      }
     });
 
     socket.on('presenter:back', () => {
