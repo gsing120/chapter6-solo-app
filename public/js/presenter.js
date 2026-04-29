@@ -26,9 +26,11 @@ const btnNext = $('btnNext');
 const btnBack = $('btnBack');
 const btnReset = $('btnReset');
 const btnAnswerNow = $('btnAnswerNow');
+const btnEndPhase = $('btnEndPhase');
 const queueBadge = $('queueBadge');
 const chatInput = $('chatInput');
 const chatSend = $('chatSend');
+const audioToggle = $('audioToggle');
 
 const timerText = $('timerText');
 const timerBar = $('timerBar');
@@ -51,6 +53,17 @@ btnReset.onclick = () => {
 };
 btnBack.onclick = () => socket.emit('presenter:back');
 btnAnswerNow.onclick = () => socket.emit('presenter:answer-now');
+btnEndPhase.onclick = () => {
+  if (confirm('End the current phase NOW and jump to its summary?')) {
+    socket.emit('presenter:end-phase');
+  }
+};
+audioToggle.onchange = () => {
+  socket.emit('presenter:audio-enable', { enabled: audioToggle.checked });
+};
+socket.on('audio:enabled', ({ enabled }) => {
+  audioToggle.checked = !!enabled;
+});
 chatSend.onclick = sendChat;
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
@@ -128,40 +141,44 @@ async function ensureQR() {
 }
 ensureQR();
 
-/* ─── State dispatch ────────────────────────────────────────── */
-/* ─── Session clock (30-min budget per the rubric) ─────────── */
+/* ─── Session + Phase clocks ───────────────────────────────── */
 const sessionClockEl = document.getElementById('sessionClock');
 const sessionClockWrap = document.getElementById('sessionClockWrap');
+const phaseClockEl = document.getElementById('phaseClock');
+const phaseClockWrap = document.getElementById('phaseClockWrap');
 let sessionStartedAt = null;
 let sessionBudgetMs = 30 * 60 * 1000;
+let phaseStartedAt = null;
+let phaseBudgetMs = 10 * 60 * 1000;
+
 function fmtClock(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
-setInterval(() => {
-  if (!sessionStartedAt) {
-    sessionClockWrap.classList.add('hidden');
+
+function tickClock(wrap, el, startedAt, budget, warnSeconds = 120) {
+  if (!startedAt) {
+    wrap.classList.add('hidden');
     return;
   }
-  sessionClockWrap.classList.remove('hidden');
-  const elapsed = Date.now() - sessionStartedAt;
-  const budget = sessionBudgetMs;
+  wrap.classList.remove('hidden');
+  const elapsed = Date.now() - startedAt;
   if (elapsed >= budget) {
-    const over = elapsed - budget;
-    sessionClockEl.textContent = `+${fmtClock(over)} OVER · ${fmtClock(budget)} budget`;
-    sessionClockWrap.classList.add('over');
-    sessionClockWrap.classList.remove('warn');
+    el.textContent = `+${fmtClock(elapsed - budget)} OVER · ${fmtClock(budget)}`;
+    wrap.classList.add('over');
+    wrap.classList.remove('warn');
   } else {
-    sessionClockEl.textContent = `${fmtClock(elapsed)} / ${fmtClock(budget)}`;
-    sessionClockWrap.classList.remove('over');
-    if (budget - elapsed <= 5 * 60 * 1000) {
-      sessionClockWrap.classList.add('warn');
-    } else {
-      sessionClockWrap.classList.remove('warn');
-    }
+    el.textContent = `${fmtClock(elapsed)} / ${fmtClock(budget)}`;
+    wrap.classList.remove('over');
+    wrap.classList.toggle('warn', budget - elapsed <= warnSeconds * 1000);
   }
+}
+
+setInterval(() => {
+  tickClock(sessionClockWrap, sessionClockEl, sessionStartedAt, sessionBudgetMs, 5 * 60);
+  tickClock(phaseClockWrap, phaseClockEl, phaseStartedAt, phaseBudgetMs, 2 * 60);
 }, 1000);
 
 socket.on('state:update', (s) => {
@@ -169,7 +186,38 @@ socket.on('state:update', (s) => {
   groupCount.textContent = Object.keys(s.groups || {}).length;
   sessionStartedAt = s.sessionStartedAt || null;
   if (s.sessionBudgetMs) sessionBudgetMs = s.sessionBudgetMs;
+  phaseStartedAt = s.phaseStartedAt || null;
+  if (s.phaseBudgetMs) phaseBudgetMs = s.phaseBudgetMs;
+  if (typeof s.audioEnabled === 'boolean' && audioToggle) {
+    audioToggle.checked = s.audioEnabled;
+  }
   applyPhase(s);
+});
+
+/* ─── Persistent group-leaderboard widget ──────────────────── */
+const groupBoard = document.getElementById('groupBoard');
+const groupBoardList = document.getElementById('groupBoardList');
+socket.on('group:scores', ({ groups }) => {
+  if (!groupBoard || !groupBoardList) return;
+  if (!groups || groups.length === 0) {
+    groupBoard.classList.add('hidden-board');
+    return;
+  }
+  groupBoard.classList.remove('hidden-board');
+  groupBoardList.innerHTML = groups
+    .slice(0, 10)
+    .map((g, i) => {
+      const cls = i < 3 ? `gb-${i + 1}` : '';
+      const ptsCls = g.total < 0 ? 'neg' : '';
+      return `
+        <div class="gb-row ${cls}">
+          <div class="gb-rank">${i + 1}</div>
+          <div class="gb-name">${escapeHtml(g.group)}<small>· ${g.members.length}</small></div>
+          <div class="gb-pts ${ptsCls}">${g.total > 0 ? '+' : ''}${g.total}</div>
+        </div>
+      `;
+    })
+    .join('');
 });
 
 socket.on('reset', () => {
@@ -183,10 +231,9 @@ function applyPhase(s) {
   btnJoke.classList.toggle('hidden', !live);
   btnBack.classList.toggle('hidden', !live);
   btnSkipSub.classList.toggle('hidden', !live);
+  btnEndPhase.classList.toggle('hidden', !live);
   btnAddTime.classList.toggle('hidden', !live);
   btnPause.classList.toggle('hidden', !live);
-  // Next is always visible while live — clicking it always advances something
-  // (a narration wait, a pending advance, a running timer, or a phase-end).
   btnNext.classList.toggle('hidden', !live);
 
   // Show/hide QR corner + reserve stage padding when it's visible
@@ -215,7 +262,10 @@ function applyPhase(s) {
     setBadge('PHASE 3 · PRIORITY PYRAMID', 'seg-3');
     phaseLabel.textContent = 'Priority Pyramid';
     subLabel.textContent = subPhaseLabel(s.subPhase);
-    if (s.subPhase === 'pyramid_display' || s.subPhase === 'pyramid_ai') {
+    if (
+      (s.subPhase && s.subPhase.startsWith('pyramid_display')) ||
+      s.subPhase === 'pyramid_ai'
+    ) {
       mainEl.classList.remove('one-col');
     } else {
       mainEl.classList.add('one-col');
@@ -237,9 +287,8 @@ function subPhaseLabel(sp) {
   if (!sp) return '';
   const map = {
     ct_scenario: 'Scenario',
-    ct_q1: 'Guiding Q1',
-    ct_q2: 'Guiding Q2',
-    ct_q3: 'Guiding Q3',
+    ct_quiz: 'Quiz',
+    ct_reveal: 'Reveal',
     ct_ai_processing: 'Analyzing',
     ct_ai: 'Class Summary',
     ct_scoreboard: 'Scoreboard',
@@ -291,88 +340,118 @@ async function renderLobby(s) {
   `;
 }
 
-/* ─── CT ─────────────────────────────────────────────────── */
-const ctAnswersCache = { ct_q1: [], ct_q2: [], ct_q3: [] };
-let currentCTQId = null;
+/* ─── Phase 1: scenario + 12-question one-word quiz ───────── */
+let currentCTQ = null; // { id, text, hint, index, total, submitted: 0 }
+
+function audioControlsHTML() {
+  return `
+    <div class="scenario-audio-controls">
+      <button class="scenario-audio-btn" data-audio-action="stop" title="Stop AI voice">⏹</button>
+      <button class="scenario-audio-btn" data-audio-action="replay" title="Replay AI voice">↻</button>
+    </div>
+  `;
+}
+
+function wireAudioControls() {
+  document.querySelectorAll('[data-audio-action]').forEach((el) => {
+    el.onclick = () => {
+      const action = el.dataset.audioAction;
+      if (action === 'stop') socket.emit('presenter:audio-stop');
+      if (action === 'replay') socket.emit('presenter:audio-replay');
+    };
+  });
+}
 
 socket.on('ct:scenario', ({ scenario }) => {
-  currentCTQId = null;
+  currentCTQ = null;
   stage.innerHTML = `
-    <div class="scenario-card">
-      <span class="seg-badge seg-1" style="margin-bottom:10px">Phase 1 · Critical Thinking Q3 — Heat Warnings</span>
+    <div class="scenario-card" style="position:relative">
+      ${audioControlsHTML()}
+      <span class="seg-badge seg-1" style="margin-bottom:10px">Phase 1 · CT Q3 — BC Heat Warnings</span>
       <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
         Emancipatory lens: top-down public-health messaging assumes everyone has equal access to act on the advice. Whose autonomy and lived experience is at the centre — and whose isn't?
       </p>
-      <h2>Scenario · Read aloud</h2>
+      <h2>Scenario</h2>
       <div class="scenario-text">${escapeHtml(scenario)}</div>
     </div>
   `;
   side.innerHTML = `
     <div class="answers-feed">
-      <h3>Live answers</h3>
-      <p style="color:var(--text-dim);font-size:0.85rem">
-        Guiding questions will appear after the scenario.
-      </p>
+      <h3>Coming up</h3>
+      <p style="color:var(--text-dim);font-size:0.85rem">12 one-word questions with hints. +10 right · −5 wrong.</p>
     </div>
   `;
+  wireAudioControls();
 });
 
-socket.on('ct:question', ({ id, text, index, total }) => {
-  currentCTQId = id;
-  const totalQ = total || 2;
+socket.on('ct:question', ({ id, text, hint, index, total }) => {
+  currentCTQ = { id, text, hint, index, total, submitted: 0 };
+  renderCTQuestion();
+});
+
+socket.on('ct:count', ({ questionId, submitted }) => {
+  if (!currentCTQ || currentCTQ.id !== questionId) return;
+  currentCTQ.submitted = submitted;
+  const el = document.getElementById('ctLiveCount');
+  if (el) el.textContent = submitted;
+});
+
+socket.on('ct:reveal', ({ id, correctAnswer, pctCorrect, correctCount, totalSubmissions, roast, hint }) => {
+  if (!currentCTQ || currentCTQ.id !== id) {
+    currentCTQ = currentCTQ || { id, hint };
+  }
   stage.innerHTML = `
-    <div class="question-card">
-      <div class="q-label">Guiding Question ${index + 1} of ${totalQ}</div>
-      <div class="q-text">${escapeHtml(text)}</div>
+    <div class="quiz-card" style="position:relative">
+      ${audioControlsHTML()}
+      <div class="quiz-progress">Question ${currentCTQ.index + 1} of ${currentCTQ.total} · Reveal</div>
+      <div class="quiz-question">${escapeHtml(currentCTQ.text || '')}</div>
+      ${hint || currentCTQ.hint ? `<div class="quiz-hint">Hint: ${escapeHtml(hint || currentCTQ.hint)}</div>` : ''}
+      <div class="quiz-reveal">
+        <div class="reveal-label">Correct answer</div>
+        <div class="reveal-answer">${escapeHtml(correctAnswer)}</div>
+        <div class="reveal-stats">${correctCount} / ${totalSubmissions} students correct (${pctCorrect}%)</div>
+        <div class="reveal-roast" id="ctRoastText">${escapeHtml(roast || '')}</div>
+      </div>
     </div>
   `;
-  renderCTSide(id);
+  if (roast) typewriter($('ctRoastText'), roast, 14);
+  wireAudioControls();
 });
 
-socket.on('ct:answer', ({ questionId, name, group, text }) => {
-  if (!ctAnswersCache[questionId]) ctAnswersCache[questionId] = [];
-  ctAnswersCache[questionId].push({ name, group, text });
-  if (currentCTQId === questionId) renderCTSide(questionId);
-});
-
-function renderCTSide(qid) {
-  const answers = ctAnswersCache[qid] || [];
-  side.innerHTML = `
-    <div class="answers-feed">
-      <h3>Live answers · ${answers.length}</h3>
-      ${answers
-        .slice()
-        .reverse()
-        .map(
-          (a) => `
-        <div class="answer-item">
-          <div class="who">${escapeHtml(a.group)} · ${escapeHtml(a.name)}</div>
-          <div class="what">${escapeHtml(a.text)}</div>
-        </div>`
-        )
-        .join('') || '<p style="color:var(--text-dim)">Waiting for responses…</p>'}
+function renderCTQuestion() {
+  if (!currentCTQ) return;
+  const c = currentCTQ;
+  stage.innerHTML = `
+    <div class="quiz-card" style="position:relative">
+      ${audioControlsHTML()}
+      <div class="quiz-progress">Question ${c.index + 1} of ${c.total}</div>
+      <div class="quiz-question">${escapeHtml(c.text)}</div>
+      ${c.hint ? `<div class="quiz-hint">Hint: ${escapeHtml(c.hint)}</div>` : ''}
+      <div class="quiz-live"><b id="ctLiveCount">0</b> students answered so far</div>
     </div>
   `;
+  wireAudioControls();
 }
 
 socket.on('ct:processing', () => {
   stage.innerHTML = `
     <div class="ai-summary">
       <div class="ai-badge"><span class="dot"></span> Analyzing</div>
-      <div class="ai-text" style="color:var(--text-dim)">Grouping responses by theme, checking clinical reasoning, tying to emancipatory nursing.</div>
+      <div class="ai-text" style="color:var(--text-dim)">Tallying the quiz results, drawing the threads back to CT Q3.</div>
     </div>
   `;
 });
 
 socket.on('ct:summary', ({ summary }) => {
   stage.innerHTML = `
-    <div class="ai-summary">
+    <div class="ai-summary" style="position:relative">
+      ${audioControlsHTML()}
       <div class="ai-badge"><span class="dot"></span> Class Summary · Emancipatory Lens</div>
       <div class="ai-text" id="ctSummaryText"></div>
     </div>
   `;
   typewriter($('ctSummaryText'), summary);
-  speak(summary);
+  wireAudioControls();
 });
 
 /* ─── MVF ──────────────────────────────────────────────────── */
@@ -660,32 +739,35 @@ socket.on('pyramid:analysis', ({ analysis, submissions }) => {
 });
 
 /* ─── SCOREBOARD ─────────────────────────────────────────── */
-socket.on('scoreboard', ({ phaseLabel: pl, top, top3, praise }) => {
+socket.on('scoreboard', ({ phaseLabel: pl, groups, praise }) => {
   const medalCls = ['top1', 'top2', 'top3'];
-  const rows = top
-    .map(
-      (s, i) => `
+  const rows = (groups || [])
+    .map((g, i) => {
+      const phaseSign = g.phaseScore >= 0 ? '+' : '';
+      const ptsCls = g.phaseScore < 0 ? 'phase-pts neg' : 'phase-pts';
+      return `
     <div class="sb-row ${medalCls[i] || ''}">
       <div class="rank">#${i + 1}</div>
-      <div class="name">${escapeHtml(s.name)}${s.group && s.group !== s.name ? `<small>${escapeHtml(s.group)}</small>` : ''}</div>
-      <div class="phase-pts">+${s.phaseScore}</div>
-      <div class="total-pts">${s.total} total</div>
+      <div class="name">${escapeHtml(g.group)}<small>· ${g.members.length} member${g.members.length === 1 ? '' : 's'}</small></div>
+      <div class="${ptsCls}">${phaseSign}${g.phaseScore}</div>
+      <div class="total-pts">${g.total} total</div>
     </div>
-  `
-    )
+  `;
+    })
     .join('');
 
   stage.innerHTML = `
-    <div class="scoreboard">
-      <div><span class="seg-badge seg-3">SCOREBOARD</span></div>
-      <h1>Top of the class</h1>
+    <div class="scoreboard" style="position:relative">
+      ${audioControlsHTML()}
+      <div><span class="seg-badge seg-3">GROUP SCOREBOARD</span></div>
+      <h1>Top groups</h1>
       <div class="sb-phase">Phase: ${escapeHtml(pl)}</div>
       <div class="sb-praise" id="sbPraiseText"></div>
       <div class="sb-rows">${rows || '<p style="color:var(--text-dim)">No scores recorded.</p>'}</div>
     </div>
   `;
   typewriter($('sbPraiseText'), praise);
-  speak(praise);
+  wireAudioControls();
 });
 
 /* ─── CHAT ───────────────────────────────────────────────── */
@@ -725,19 +807,21 @@ socket.on('chat:answer', ({ question, answer }) => {
 /* ─── JOKE ───────────────────────────────────────────────── */
 socket.on('joke', ({ joke, nextPhase }) => {
   stage.innerHTML = `
-    <div class="joke-card">
+    <div class="joke-card" style="position:relative">
+      ${audioControlsHTML()}
       <span class="joke-badge">Quick joke before ${escapeHtml(nextPhase)}</span>
       <div class="joke-text" id="jokeTextEl"></div>
     </div>
   `;
   typewriter($('jokeTextEl'), joke, 30);
-  speak(joke);
+  wireAudioControls();
 });
 
 /* ─── Phase 2 context: Emily Grayson scenario ───────────────── */
 socket.on('mvf:context', ({ title, context }) => {
   stage.innerHTML = `
-    <div class="scenario-card">
+    <div class="scenario-card" style="position:relative">
+      ${audioControlsHTML()}
       <span class="seg-badge seg-2" style="margin-bottom:10px">Phase 2 · Emancipatory Activity 2</span>
       <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
         Emancipatory lens: education that begins with what Emily already knows, does, and values — not what we think she should hear.
@@ -746,12 +830,14 @@ socket.on('mvf:context', ({ title, context }) => {
       <div class="scenario-text">${escapeHtml(context)}</div>
     </div>
   `;
+  wireAudioControls();
 });
 
 /* ─── Phase 3 context: Mr. M scenario ──────────────────────── */
 socket.on('pyramid:context', ({ title, context }) => {
   stage.innerHTML = `
-    <div class="scenario-card">
+    <div class="scenario-card" style="position:relative">
+      ${audioControlsHTML()}
       <span class="seg-badge seg-3" style="margin-bottom:10px">Phase 3 · Emancipatory Activity 3</span>
       <p style="color:var(--text-secondary);font-style:italic;margin-bottom:14px;font-size:0.95rem">
         Emancipatory lens: knowing the WHOLE person makes clinical care possible — not the other way around.
@@ -760,33 +846,33 @@ socket.on('pyramid:context', ({ title, context }) => {
       <div class="scenario-text">${escapeHtml(context)}</div>
     </div>
   `;
+  wireAudioControls();
 });
 
 /* ─── COMPLETE ─────────────────────────────────────────── */
-socket.on('complete', ({ final, takeaways }) => {
-  const rows = (final || [])
-    .map(
-      (s, i) => `
+socket.on('complete', ({ finalGroups, takeaways }) => {
+  const groups = finalGroups || [];
+  const rows = groups
+    .map((g, i) => `
     <div class="sb-row ${i < 3 ? ['top1','top2','top3'][i] : ''}">
       <div class="rank">#${i + 1}</div>
-      <div class="name">${escapeHtml(s.name)}${s.group && s.group !== s.name ? `<small>${escapeHtml(s.group)}</small>` : ''}</div>
-      <div class="phase-pts">${s.scores.total} pts</div>
-      <div class="total-pts">CT ${s.scores.ct} · MvF ${s.scores.mvf} · Pyr ${s.scores.pyramid}</div>
+      <div class="name">${escapeHtml(g.group)}<small>· ${g.members.length} member${g.members.length === 1 ? '' : 's'}</small></div>
+      <div class="phase-pts">${g.total} pts</div>
+      <div class="total-pts">${g.members.length} member${g.members.length === 1 ? '' : 's'}</div>
     </div>
-  `
-    )
+  `)
     .join('');
   stage.innerHTML = `
-    <div class="scoreboard">
+    <div class="scoreboard" style="position:relative">
+      ${audioControlsHTML()}
       <h1 class="hero-title" style="font-size:3rem">Key Takeaways</h1>
       <div class="sb-praise" id="closingTakeaways"></div>
-      <h2 style="margin-top:18px;font-size:1.4rem">Final standings</h2>
+      <h2 style="margin-top:18px;font-size:1.4rem">Final group standings</h2>
       <div class="sb-rows">${rows || '<p style="color:var(--text-dim)">No scores.</p>'}</div>
     </div>
   `;
-  if (takeaways) {
-    typewriter($('closingTakeaways'), takeaways, 12);
-  }
+  if (takeaways) typewriter($('closingTakeaways'), takeaways, 12);
+  wireAudioControls();
 });
 
 /* ─── Typewriter + voice ─────────────────────────────────── */

@@ -175,6 +175,31 @@ socket.on('student:score', ({ scores }) => {
   if (badge) badge.textContent = `${scores.total || 0} pts`;
 });
 
+/* ─── Persistent group rank panel for the student ──────────── */
+let lastGroupSnapshot = [];
+socket.on('group:scores', ({ groups }) => {
+  lastGroupSnapshot = groups || [];
+  renderGroupRankWidget();
+});
+function renderGroupRankWidget() {
+  const wrap = document.getElementById('groupRankWrap');
+  if (!wrap) return;
+  if (!me.group || lastGroupSnapshot.length === 0) {
+    wrap.innerHTML = '';
+    return;
+  }
+  const myG = lastGroupSnapshot.find((g) => g.group === me.group);
+  const myRank = myG ? lastGroupSnapshot.indexOf(myG) + 1 : null;
+  if (!myG) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div class="group-rank-pill">
+      <span class="grl">Your group</span>
+      <b>${escapeHtml(myG.group)}</b>
+      <span class="grr">#${myRank} · ${myG.total > 0 ? '+' : ''}${myG.total} pts</span>
+    </div>
+  `;
+}
+
 socket.on('state:update', (s) => {
   currentState = s;
   if (me.name) render();
@@ -220,72 +245,89 @@ function renderLobby() {
   `;
 }
 
-/* ─── CT ───────────────────────────────────────────────────── */
+/* ─── Phase 1: scenario + 12-question one-word quiz ────────── */
 let cachedScenario = '';
 let ctCurrent = null;
-let ctSubmittedIds = new Set();
+const ctSubmittedIds = new Set();
 
 socket.on('ct:scenario', ({ scenario }) => {
   ctCurrent = null;
   cachedScenario = scenario || cachedScenario;
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-1">Phase 1 · Critical Thinking</span>
-      <h2>Scenario · BC Heat Warning</h2>
+      <span class="seg-badge seg-1">Phase 1 · CT Q3 · BC Heat Warnings</span>
+      <h2>Scenario</h2>
       <div class="scenario-readonly">${escapeHtml(cachedScenario)}</div>
-      <div class="hint">Your instructor is reading this aloud. Guiding questions will appear next.</div>
+      <p class="hint">12 quick one-word questions coming up. Each has a hint. <b>+10 right · −5 wrong.</b></p>
       ${renderTimerPill()}
     </div>
   `;
 });
 
-socket.on('ct:question', ({ id, text, index, total }) => {
-  ctCurrent = { id, text, index, total: total || 2 };
+socket.on('ct:question', ({ id, text, hint, index, total }) => {
+  ctCurrent = { id, text, hint, index, total };
   const already = ctSubmittedIds.has(id);
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-1">Guiding Q${index + 1} of ${ctCurrent.total}</span>
-      <details class="scenario-readonly" style="font-size:0.78rem;color:var(--text-dim)">
-        <summary style="cursor:pointer;color:var(--teal)">View scenario</summary>
-        <div style="margin-top:8px">${escapeHtml(cachedScenario)}</div>
-      </details>
-      <h2>${escapeHtml(text)}</h2>
+      <span class="seg-badge seg-1">Question ${index + 1} of ${total}</span>
+      <h2 style="font-size:1.15rem;line-height:1.4">${escapeHtml(text)}</h2>
+      ${hint ? `<div class="quiz-hint-mobile">Hint: ${escapeHtml(hint)}</div>` : ''}
       ${renderTimerPill()}
-      ${
-        already
-          ? `<div class="s-ack">✓ Submitted — waiting for next question…</div>`
-          : `
-        <textarea id="ctAnswer" placeholder="Type your answer…" maxlength="500"></textarea>
-        <button id="btnCTSend" class="btn btn-block">Send answer</button>
-      `
-      }
+      ${already
+        ? `<div class="s-ack">✓ Submitted</div><p class="hint">Waiting for reveal…</p>`
+        : `
+        <input id="ctAnswer" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false" placeholder="One word…" maxlength="40"
+               style="width:100%;padding:14px 16px;font-size:1.1rem;border-radius:12px;background:var(--bg-surface);border:1px solid var(--glass-border);color:var(--text-primary);font-family:inherit">
+        <button id="btnCTSend" class="btn btn-block" style="margin-top:10px">Submit answer</button>
+        <p class="hint">+10 right · −5 wrong. One shot per question.</p>
+      `}
     </div>
   `;
-  const ta = $('ctAnswer');
-  if (ta) ta.focus();
+  const inp = $('ctAnswer');
+  if (inp) inp.focus();
   const btn = $('btnCTSend');
-  if (btn) {
-    btn.onclick = () => {
-      const val = $('ctAnswer').value.trim();
-      if (val.length < 30) {
-        alert('Write at least a couple of sentences (30+ characters). One-word answers will not be graded.');
-        return;
-      }
-      socket.emit('student:ct-answer', { questionId: id, answer: val });
-      btn.disabled = true;
-      btn.textContent = 'Sending…';
-    };
+  function submit() {
+    const val = ($('ctAnswer')?.value || '').trim();
+    if (!val) return;
+    socket.emit('student:ct-answer', { questionId: id, answer: val });
+    if (btn) { btn.disabled = true; btn.textContent = 'Sent'; }
+    if (inp) inp.disabled = true;
+  }
+  if (btn) btn.onclick = submit;
+  if (inp) {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submit();
+    });
   }
 });
 
 socket.on('student:ct-ack', ({ questionId }) => {
   ctSubmittedIds.add(questionId);
+  // Update the existing card to show Submitted state without replacing the
+  // whole stage (so the input box gracefully transitions).
+  const card = stage.querySelector('.s-card');
+  if (card) {
+    card.querySelectorAll('input, button').forEach((el) => (el.disabled = true));
+    const note = document.createElement('div');
+    note.className = 's-ack';
+    note.textContent = '✓ Submitted — waiting for reveal';
+    card.appendChild(note);
+  }
+});
+
+socket.on('ct:reveal', ({ id, correctAnswer, pctCorrect, correctCount, totalSubmissions }) => {
+  // Show a brief result on the phone — correct/wrong + the right answer.
+  const myAnswered = ctSubmittedIds.has(id);
   stage.innerHTML = `
     <div class="s-card glass">
-      <span class="seg-badge seg-1">Submitted</span>
-      <div class="s-ack">✓ Submitted — graded by AI after all 3 questions</div>
-      <div class="s-waiting"><div class="pulse-dot"></div><h3>Waiting for next question…</h3></div>
-      ${renderTimerPill()}
+      <span class="seg-badge seg-1">Reveal · Q${(ctCurrent?.index ?? 0) + 1}</span>
+      <h2 style="font-size:1.05rem">${escapeHtml(ctCurrent?.text || '')}</h2>
+      <div class="mvf-result correct" style="margin-top:8px">
+        Correct answer: <b>${escapeHtml(correctAnswer)}</b><br>
+        <span style="font-size:0.9rem;font-weight:600">${correctCount}/${totalSubmissions} students correct (${pctCorrect}%)</span>
+      </div>
+      ${myAnswered ? '<p class="hint">Your answer counted (+10 right / −5 wrong applied to your group).</p>' : '<p class="hint">You did not submit on this one.</p>'}
     </div>
   `;
 });
@@ -294,7 +336,7 @@ socket.on('ct:processing', () => {
   stage.innerHTML = `
     <div class="s-card glass">
       <span class="seg-badge seg-1">Phase 1</span>
-      <div class="s-waiting"><div class="pulse-dot"></div><h3>AI is reviewing the class's answers…</h3></div>
+      <div class="s-waiting"><div class="pulse-dot"></div><h3>Tallying the quiz…</h3></div>
     </div>
   `;
 });
@@ -304,7 +346,7 @@ socket.on('ct:summary', () => {
     <div class="s-card glass">
       <span class="seg-badge seg-1">Class Summary</span>
       <h2>Look at the front screen</h2>
-      <p class="hint">The AI summary is being revealed up front. Your instructor will debrief next.</p>
+      <p class="hint">The instructor is reading the round summary. Group scoreboard next.</p>
     </div>
   `;
 });

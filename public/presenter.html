@@ -22,6 +22,12 @@
   </div>
 </div>
 
+<!-- Persistent group-leaderboard widget (always visible after first score) -->
+<div id="groupBoard" class="group-board hidden-board">
+  <div class="group-board-title">Group Scores</div>
+  <div id="groupBoardList" class="group-board-list"></div>
+</div>
+
 <div class="presenter-shell">
 
   <!-- Header -->
@@ -31,15 +37,17 @@
       <span id="phaseLabel" class="phase-label" style="margin-left:12px">Waiting to start</span>
       <span id="subLabel" class="sub-label"></span>
     </div>
-    <div>
-      <span id="sessionClockWrap" class="session-clock hidden">
+    <div class="header-meta">
+      <span id="phaseClockWrap" class="session-clock hidden" title="Time spent in current phase / 10-min budget">
+        <span class="session-clock-label">Phase</span>
+        <span id="phaseClock" class="session-clock-value">0:00 / 10:00</span>
+      </span>
+      <span id="sessionClockWrap" class="session-clock hidden" title="Total session time / 30-min budget">
         <span class="session-clock-label">Session</span>
         <span id="sessionClock" class="session-clock-value">0:00 / 30:00</span>
       </span>
-      <span style="margin:0 10px;color:var(--text-dim)">·</span>
       <span class="student-count"><span id="studentCount">0</span> connected</span>
-      <span style="margin:0 10px;color:var(--text-dim)">·</span>
-      <span style="color:var(--text-secondary)"><span id="groupCount">0</span> groups</span>
+      <span style="color:var(--text-secondary);margin-left:8px"><span id="groupCount">0</span> groups</span>
     </div>
   </div>
 
@@ -60,6 +68,7 @@
       <button id="btnJoke" class="btn btn-gold hidden">Joke</button>
       <button id="btnBack" class="btn btn-ghost hidden">← Back</button>
       <button id="btnSkipSub" class="btn btn-ghost hidden">Skip</button>
+      <button id="btnEndPhase" class="btn btn-coral hidden">End Phase</button>
       <button id="btnAddTime" class="btn btn-ghost hidden">+30s</button>
       <button id="btnPause" class="btn btn-ghost hidden">Pause</button>
       <button id="btnAnswerNow" class="btn btn-gold hidden">Answer Now <span id="queueBadge" class="hidden">0</span></button>
@@ -72,6 +81,10 @@
       <select id="voiceSelect" class="voice-select" title="Change Artificial Nurse voice">
         <option>Loading voices…</option>
       </select>
+      <label class="audio-toggle" title="Toggle AI voice on/off">
+        <input id="audioToggle" type="checkbox" checked>
+        <span>AI Voice</span>
+      </label>
     </div>
   </div>
 </div>

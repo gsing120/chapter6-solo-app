@@ -2,6 +2,171 @@
    Presenter view — full-screen laptop layout
    ═══════════════════════════════════════════════════════════ */
 
+/* ─── Header meta cluster (clocks + counts) ────────────────── */
+.p-header .header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ─── Persistent group leaderboard widget ──────────────────── */
+.group-board {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  width: 240px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: rgba(6, 8, 15, 0.92);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.group-board.hidden-board { display: none; }
+.group-board-title {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+.group-board-list { display: flex; flex-direction: column; gap: 6px; }
+.gb-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  font-size: 0.85rem;
+}
+.gb-row.gb-1 { border-color: var(--gold); background: rgba(255, 217, 61, 0.12); }
+.gb-row.gb-2 { border-color: #cbd5e1; background: rgba(203, 213, 225, 0.1); }
+.gb-row.gb-3 { border-color: #c57b57; background: rgba(197, 123, 87, 0.12); }
+.gb-rank { font-family: var(--font-display); font-weight: 900; color: var(--text-secondary); text-align: center; }
+.gb-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gb-name small { color: var(--text-dim); margin-left: 4px; font-weight: 400; }
+.gb-pts { font-family: var(--font-display); font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; }
+.gb-pts.neg { color: var(--coral); }
+
+/* ─── Per-scenario audio buttons (Stop / Replay) ───────────── */
+.scenario-audio-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.scenario-audio-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.scenario-audio-btn:hover { background: rgba(0, 245, 212, 0.12); }
+.scenario-audio-btn:active { transform: scale(0.92); }
+
+/* ─── Footer audio toggle ──────────────────────────────────── */
+.audio-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.audio-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--teal);
+}
+
+/* ─── Phase 1 quiz card ────────────────────────────────────── */
+.quiz-card { padding: 30px 36px; position: relative; }
+.quiz-progress {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+  margin-bottom: 14px;
+}
+.quiz-question {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+.quiz-hint {
+  display: inline-block;
+  padding: 9px 16px;
+  background: rgba(255, 217, 61, 0.12);
+  border: 1px solid rgba(255, 217, 61, 0.4);
+  border-radius: 999px;
+  color: var(--gold);
+  font-style: italic;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+}
+.quiz-live {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+.quiz-reveal {
+  margin-top: 18px;
+  padding: 18px 22px;
+  background: rgba(0, 245, 212, 0.08);
+  border: 1px solid rgba(0, 245, 212, 0.35);
+  border-radius: var(--radius-md);
+}
+.quiz-reveal .reveal-label {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+}
+.quiz-reveal .reveal-answer {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin: 6px 0 10px;
+}
+.quiz-reveal .reveal-stats {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+.quiz-reveal .reveal-roast {
+  padding: 12px 16px;
+  background: var(--glass-bg);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  line-height: 1.55;
+}
+
 .presenter-shell {
   position: relative;
   z-index: 1;
@@ -687,6 +852,7 @@ body.presenter.qr-on .p-stage > * {
   font-weight: 700;
   color: var(--teal);
 }
+.sb-row .phase-pts.neg { color: var(--coral); }
 .sb-row .total-pts {
   font-family: var(--font-display);
   color: var(--text-secondary);

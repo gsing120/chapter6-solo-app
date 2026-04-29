@@ -2,6 +2,45 @@
    Student view — mobile-first
    ═══════════════════════════════════════════════════════════ */
 
+/* ─── Persistent group-rank pill ───────────────────────────── */
+.group-rank-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin: 0 0 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+.group-rank-pill .grl {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.group-rank-pill b { color: var(--teal); }
+.group-rank-pill .grr {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* ─── Quiz hint for student card ───────────────────────────── */
+.quiz-hint-mobile {
+  display: inline-block;
+  padding: 7px 12px;
+  background: rgba(255, 217, 61, 0.12);
+  border: 1px solid rgba(255, 217, 61, 0.4);
+  border-radius: 999px;
+  color: var(--gold);
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 4px 0 8px;
+}
+
 body.student {
   overflow-y: auto;
   overflow-x: hidden;
