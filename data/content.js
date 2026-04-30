@@ -329,7 +329,7 @@ const TRANSITION_JOKES = {
   ct_to_mvf:
     "From freezing apartments to sun-baked gardens. Whoever drew the chapter assigning thermoregulation AND skin AND sex AND respiration on the same week — we'll be having a word.",
   mvf_to_pyramid:
-    "Emily wraps up her ABCDE check, you wrap up the ageism, and we walk into Mr. M's living room. He's got more meds than tablemates. Let's prioritize.",
+    "From Emily's garden to Mr. M's living room. He has heart failure, more medications than friends, and one appointment to figure out who he is before we figure out what he needs. Let's prioritize.",
   pyramid_to_complete:
     "Mr. M is collaborated with, Emily is empowered, the heat dome is closing — that's three older adults whose stories we just took seriously. Class dismissed.",
 };
