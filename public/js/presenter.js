@@ -1049,7 +1049,13 @@ function playNextAudio() {
   const next = audioQueue.shift();
   if (!next) return;
   audioPlaying = true;
-  const audio = new Audio(`data:${next.mime || 'audio/wav'};base64,${next.audioBase64}`);
+  // Two source formats:
+  //  - audioUrl: pre-baked WAV served statically (no Gemini call)
+  //  - audioBase64: live-generated TTS (data URI)
+  const src = next.audioUrl
+    ? next.audioUrl
+    : `data:${next.mime || 'audio/wav'};base64,${next.audioBase64}`;
+  const audio = new Audio(src);
   currentAudioEl = audio;
   const advance = () => {
     audioPlaying = false;

@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 const path = require('path');
 const os = require('os');
 const { GoogleGenAI } = require('@google/genai');
-const { PHASE1, PHASE2, PHASE3 } = require('./data/content');
+const { PHASE1, PHASE2, PHASE3, TRANSITION_JOKES } = require('./data/content');
 
 const app = express();
 // Trust the cloud reverse proxy (Render, Heroku, Fly, etc.) so req.protocol
@@ -126,6 +126,27 @@ async function generateTTS(text, voiceOverride) {
 }
 
 let audioSeq = 0;
+
+/**
+ * Emit a pre-baked audio file for instant playback (no Gemini TTS call).
+ * `url` is a path under /audio/preloaded/ served statically.
+ * Used for per-question MvF/CT roasts and transition jokes.
+ */
+function playPreloadedAudio(label, url) {
+  if (!state.audioEnabled) {
+    // Audio muted globally — skip the play emit but still record so
+    // Replay can re-fire when re-enabled.
+    state.lastNarration[label] = { url };
+    return;
+  }
+  io.emit('audio:clear', {});
+  io.emit('audio:play', {
+    id: ++audioSeq,
+    label,
+    audioUrl: url,
+  });
+  state.lastNarration[label] = { url };
+}
 // Epoch increments every time we clear audio — any in-flight speakNarration
 // captures the epoch at start and aborts if it changes (i.e., a new phase
 // has begun and the old narration is stale).
@@ -749,27 +770,27 @@ HARD RULES:
   startNarrationWait(() => { if (onDone) onDone(); });
 }
 
-/* ─── Transition joke ───────────────────────────────────────── */
+/* ─── Transition joke (PRE-BAKED, no live Gemini call) ────── */
 async function emitTransitionJoke(nextPhaseLabel) {
-  const prompt = `You are Nurse Mike hosting a nursing classroom activity. Give ONE short (max 2 sentences) content-related joke or one-liner to transition into the next phase: "${nextPhaseLabel}". Keep it clean, nursing-themed, and related to Chapter 6 concepts (skin, circulation, respiration, thermoregulation, or sex/intimacy in older adults). No emojis.`;
-  const fallbacks = [
-    "Why did the older adult's nurse become a detective? Because in geriatrics, a 1-degree temp bump IS the whole crime scene.",
-    "I told my patient sexual health doesn't stop at 70. She said 'honey, I know, the nurses keep forgetting to ask.'",
-    "Why is older-adult skin like a first-year nursing student? Thin, sensitive, and bruises if you look at it wrong.",
-  ];
-  const joke = await withLoading(
-    'transition_joke',
-    `Setting up: ${nextPhaseLabel}`,
-    () => callGemini(
-      prompt,
-      fallbacks[Math.floor(Math.random() * fallbacks.length)],
-      8000
-    )
-  );
+  // Map next-phase label → joke key in TRANSITION_JOKES + audio file.
+  let jokeKey;
+  if (/Emily|Skin Care|Myth vs Fact/i.test(nextPhaseLabel)) {
+    jokeKey = 'ct_to_mvf';
+  } else if (/Mr\. M|Pyramid/i.test(nextPhaseLabel)) {
+    jokeKey = 'mvf_to_pyramid';
+  } else if (/Complete|Wrap|Closing/i.test(nextPhaseLabel)) {
+    jokeKey = 'pyramid_to_complete';
+  } else {
+    // Freestyle / fallback — pick any
+    const keys = Object.keys(TRANSITION_JOKES);
+    jokeKey = keys[Math.floor(Math.random() * keys.length)];
+  }
+  const joke = TRANSITION_JOKES[jokeKey] || 'Quick break — next phase coming up.';
+  const audioUrl = `/audio/preloaded/joke_${jokeKey}.wav`;
+
   clearAudio();
-  speakAndShowSynced(joke, () => {
-    io.emit('joke', { joke, nextPhase: nextPhaseLabel });
-  }, 'joke');
+  io.emit('joke', { joke, nextPhase: nextPhaseLabel });
+  playPreloadedAudio('joke', audioUrl);
 }
 
 /* ─── Pending-advance: timers no longer auto-advance ──────────── */
@@ -955,53 +976,39 @@ async function revealCT(index) {
     : 0;
   const correctAnswerLabel = q.answers[0];
 
+  // Pre-baked reveal: pick "right" or "wrong" variant based on pctCorrect
+  // threshold (50%). Text + audio are bundled with the app — zero AI
+  // latency. Question-level fallback if the question lacks variants.
+  const variantKey = pctCorrect >= 50 ? 'right' : 'wrong';
+  const variants = q.roasts || {};
+  const roast = variants[variantKey] ||
+    (pctCorrect >= 50
+      ? `Most of you got "${correctAnswerLabel}" — nice work.`
+      : `Most of you missed "${correctAnswerLabel}". The clinical reasoning matters; review and lock it in.`);
+  const audioUrl = `/audio/preloaded/${q.id}_${variantKey}.wav`;
+
   state.ct.reveals[q.id] = {
     revealed: true,
     pctCorrect,
     correctAnswer: correctAnswerLabel,
     totalSubmissions,
     correctCount,
+    roast,
+    variantKey,
   };
 
-  // Generate a short AI roast for this question
-  const prompt = `You are the ARTIFICIAL NURSE — comedy-roast nursing educator. The class just finished a one-word quiz question for textbook Chapter 6 CT Q3 (BC heat warnings / at-risk older adults).
-
-QUESTION: "${q.text}"
-HINT GIVEN: "${q.hint}"
-CORRECT ANSWER: "${correctAnswerLabel}"
-RESULT: ${correctCount} of ${totalSubmissions} students got it right (${pctCorrect}%)
-
-Write a SHORT 2-3 sentence reaction:
-- If <50% got it right, OPEN with a playful ROAST (big-sibling energy, never mean) and explain why the answer matters in one punchy clinical line.
-- If >=50% got it right, lead with funny PRAISE and reinforce why the concept matters clinically.
-- Add a quick emancipatory nursing connection.
-- Do NOT mention any student names. Refer to "the class" or "most of you."
-- No emojis. STRICT MAX 8 lines (~600 chars). Punchy, not preachy. A touch of nursing humor.`;
-
-  const fallback = pctCorrect >= 50
-    ? `Most of you got "${correctAnswerLabel}" — nice. That's the kind of recall that turns a heatwave from a tragedy into a managed event.`
-    : `Most of you missed "${correctAnswerLabel}" — and that's exactly the gap the heat advisory doesn't close. Emancipatory nursing means we KNOW these answers cold so the older adults at risk don't pay for our blank.`;
-
-  const roast = await withLoading(
-    `ct_reveal_${q.id}`,
-    `Reviewing your answers on Q${index + 1}…`,
-    () => callGemini(prompt, fallback, 9000)
-  );
-  state.ct.reveals[q.id].roast = roast;
-
   clearAudio();
-  state.lastNarration['ct_reveal'] = `The correct answer was ${correctAnswerLabel}. ${roast}`;
-  speakAndShowSynced(state.lastNarration['ct_reveal'], () => {
-    io.emit('ct:reveal', {
-      id: q.id,
-      correctAnswer: correctAnswerLabel,
-      pctCorrect,
-      correctCount,
-      totalSubmissions,
-      roast,
-      hint: q.hint,
-    });
-  }, 'ct_reveal');
+  io.emit('ct:reveal', {
+    id: q.id,
+    correctAnswer: correctAnswerLabel,
+    pctCorrect,
+    correctCount,
+    totalSubmissions,
+    roast,
+    hint: q.hint,
+  });
+  // Play pre-baked audio (instant, no Gemini call)
+  playPreloadedAudio('ct_reveal', audioUrl);
 
   // After reveal, click Next to advance to next question or summary
   startNarrationWait(() => {
@@ -1130,34 +1137,21 @@ async function revealMVF(index) {
     emancipatory: stmt.emancipatory,
   });
 
-  const wrongAnswer = stmt.answer === 'MYTH' ? 'FACT' : 'MYTH';
-  const wrongCount = stmt.answer === 'MYTH' ? factCount : mythCount;
+  // Pre-baked reveal: pick "right" or "wrong" variant based on pctCorrect.
+  // No live AI call — instant playback.
+  const variantKey = pctCorrect >= 50 ? 'right' : 'wrong';
+  const variants = (PHASE2.roasts || {})[stmt.id] || {};
+  const roast = variants[variantKey] ||
+    (pctCorrect >= 50
+      ? `Most of you got this one. ${stmt.emancipatory}`
+      : `Most of you missed this one. ${stmt.emancipatory}`);
+  const audioUrl = `/audio/preloaded/${stmt.id}_${variantKey}.wav`;
 
-  const prompt = `You are the ARTIFICIAL NURSE — comedy-roast nursing educator. The class just voted on a myth-vs-fact statement about person-centred SKIN CARE EDUCATION for Emily Grayson, an 83-year-old avid gardener (textbook Chapter 6 Activity 2).
+  state.mvf.reveals[stmt.id] = { pctCorrect, roast, variantKey };
 
-STATEMENT: "${stmt.text}"
-CORRECT: ${stmt.answer}
-RESULTS: ${pctMyth}% said MYTH, ${pctFact}% said FACT (n=${total})
-Wrong answer chosen: ${wrongAnswer} by ${wrongCount} students.
-Emancipatory angle: ${stmt.emancipatory}
-
-Write a SHORT 2-3 sentence spicy-but-warm reaction. REQUIREMENTS:
-- If >30% got it wrong, OPEN with a playful ROAST (big-sibling energy, never mean).
-- If <=30% wrong, lead with a funny PRAISE.
-- Punch in WHY with ONE specific clinical or person-centred-care fact (skin aging, sun protection, ABCDE, social determinants, teach-back).
-- Close with the emancipatory one-liner about Emily's autonomy / dignity / lived experience.
-- No emojis. STRICT MAX 50 words.`;
-
-  const roast = await withLoading(
-    `mvf_reveal_${stmt.id}`,
-    `Reviewing the vote…`,
-    () => callGemini(prompt, PHASE2.fallbackRoasts[stmt.id])
-  );
-  state.mvf.reveals[stmt.id] = { pctCorrect, roast };
   clearAudio();
-  speakAndShowSynced(roast, () => {
-    io.emit('mvf:roast', { id: stmt.id, roast });
-  }, `mvf_roast_${stmt.id}`);
+  io.emit('mvf:roast', { id: stmt.id, roast });
+  playPreloadedAudio(`mvf_roast_${stmt.id}`, audioUrl);
 
   startNarrationWait(() => startMVFStatement(index + 1));
 }
@@ -1710,10 +1704,24 @@ io.on('connection', (socket) => {
       // Replay the most recent narration for the requested label, or the
       // last narrated text on the current sub-phase as a fallback.
       const key = label || state.subPhase;
-      const text = key && state.lastNarration[key];
-      if (!text) return;
+      const item = key && state.lastNarration[key];
+      if (!item) return;
       clearAudio();
-      speakNarration(text, key);
+      // Two formats: plain string (legacy live TTS) or { url } (pre-baked)
+      if (typeof item === 'string') {
+        speakNarration(item, key);
+      } else if (item.url) {
+        // Pre-baked: just re-emit the audio:play with the same URL
+        if (state.audioEnabled) {
+          io.emit('audio:play', {
+            id: ++audioSeq,
+            label: key,
+            audioUrl: item.url,
+          });
+        }
+      } else if (item.text) {
+        speakNarration(item.text, key);
+      }
     });
 
     /* ─── End Phase: skip remaining sub-phases, jump to phase end ─ */
