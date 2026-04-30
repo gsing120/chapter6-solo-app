@@ -1007,6 +1007,13 @@ let audioUnlocked = false;
 // first audio chunk so they start in lockstep.
 let pendingTypewriter = null;
 function schedulePendingTypewriter(el, text, speed) {
+  // If audio is already playing OR queued (e.g., audio:play fired before
+  // this text event arrived — happens with pre-baked WAVs that emit in
+  // ~1ms), don't defer the typewriter. Just type it now.
+  if (audioPlaying || audioQueue.length > 0) {
+    typewriterNow(el, text, speed);
+    return;
+  }
   pendingTypewriter = { el, text, speed };
   // Failsafe: if no audio fires within 6s (TTS down), just type anyway.
   setTimeout(() => {
@@ -1055,6 +1062,7 @@ function playNextAudio() {
   const src = next.audioUrl
     ? next.audioUrl
     : `data:${next.mime || 'audio/wav'};base64,${next.audioBase64}`;
+  console.log('[audio] playing:', next.label || 'narration', next.audioUrl || '(base64)');
   const audio = new Audio(src);
   currentAudioEl = audio;
   const advance = () => {
@@ -1064,10 +1072,19 @@ function playNextAudio() {
     else notifyServerIfQueueEmpty();
   };
   audio.onended = advance;
-  audio.onerror = advance;
-  audio.play().catch((err) => {
-    console.warn('audio play blocked:', err.message);
+  audio.onerror = (e) => {
+    console.warn('[audio] error:', src, e?.message || e);
     advance();
+  };
+  audio.play().catch((err) => {
+    console.warn('[audio] play blocked or failed:', src, err.message);
+    // Try one retry after unlocking
+    if (!audioUnlocked) {
+      unlockAudio();
+      audio.play().catch(() => advance());
+    } else {
+      advance();
+    }
   });
 }
 

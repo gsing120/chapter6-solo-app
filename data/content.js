@@ -26,7 +26,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "It's about who you don't have around you, not who you do.",
       answers: ['isolation', 'social isolation', 'loneliness'],
       roasts: {
-        wrong: "For those of you who didn't get isolation — that's exactly the gap the advisory leaves wide open. Six hundred nineteen people didn't die from heat alone; they died alone in the heat. Isolation is the clinical word for nobody came to check.",
+        wrong: "Oh sweet summer nurses — whatever you typed, it wasn't isolation. Six hundred nineteen people didn't die from the heat. They died alone, in the heat, while a public service announcement looped on the radio nobody heard. Isolation is the clinical word for nobody came to check, and if you missed it, you ARE the nobody.",
         right: "Yes — isolation. The advisory says check on neighbours for a reason. Closing that gap is upstream nursing.",
       },
     },
@@ -36,7 +36,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Pneumonia, UTI, sepsis — older adults often present this way without a full fever.",
       answers: ['infection'],
       roasts: {
-        wrong: "For those of you who missed infection — older adults run cool. Their baseline IS the alarm. One degree up means investigate before sepsis is on the chart. Waiting for thirty-eight is waiting too long.",
+        wrong: "For those of you who didn't type infection — congratulations, you're now waiting for thirty-eight degrees while your patient quietly goes septic in bed four. Older adults run cool. Their baseline IS the alarm. One degree up is the whole party invitation. Don't ghost it.",
         right: "Yes — infection. Atypical fever curves, but the bump is real. Know the baseline, catch the early signal.",
       },
     },
@@ -46,7 +46,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Chapter 6's recurring buzzword — it sets nurses free from paternalistic care.",
       answers: ['emancipatory', 'emancipation'],
       roasts: {
-        wrong: "For those of you who didn't get emancipatory — that's the buzzword the chapter is selling. Autonomy. Social determinants. Challenge ageism. Collaborate WITH, not dictate TO.",
+        wrong: "Whatever you guessed there — no. The word is emancipatory. It's printed in the chapter title in fonts the size of a small dog. Autonomy. Social determinants. Challenge ageism. Collaborate WITH, not dictate TO. Read like your group's points depend on it, because they actively do.",
         right: "Yes — emancipatory. Chapter Six's whole pitch in one word. Now go practice it.",
       },
     },
@@ -56,7 +56,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Not the textbook fever you'd expect. It's the rule, not the exception.",
       answers: ['atypical'],
       roasts: {
-        wrong: "For those of you who missed atypical — atypical IS the typical in geriatrics. New confusion, refusing food, sundowning. Investigate first; don't wait for the textbook fever to show up. It usually doesn't.",
+        wrong: "For those of you who missed atypical — geriatrics doesn't read your textbook. New confusion, refusing food, sundowning at three p.m. — THAT'S the fever in older adults. Wait for the classic presentation and you'll be charting it post-mortem. Atypical IS the typical. Write it on your hand.",
         right: "Yes — atypical. The textbook fever doesn't show up in older adults like it does in young patients. Confusion is the new fever.",
       },
     },
@@ -66,7 +66,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Greek prefix meaning 'many,' plus the word for medications.",
       answers: ['polypharmacy'],
       roasts: {
-        wrong: "For those of you who missed polypharmacy — Greek for many meds. Five or more and the falls multiply like a bad investment. Med review IS your nursing job, not just the pharmacist's.",
+        wrong: "Whatever you typed — wasn't polypharmacy. It's Greek for too many meds and a fall risk that does math. Five drugs, ten side effects, twenty interactions, one trip to the floor. Med review is YOUR job, not a vibe the pharmacist gets to in a year.",
         right: "Yes — polypharmacy. Each new prescription is another fall variable. Review, deprescribe, document.",
       },
     },
@@ -76,7 +76,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Body's lower limit — Margaret-territory.",
       answers: ['35', '35°c', '35c', 'thirty-five', 'thirty five'],
       roasts: {
-        wrong: "For those of you who missed thirty-five — that's the hypothermia threshold. Below thirty-five and we're rewarming, not waiting. Older adults cross that line faster than you think.",
+        wrong: "For those of you who didn't type thirty-five — your patient is currently turning blue while you debate. Below thirty-five we don't observe, we don't sip and ponder, we rewarm. Older adults cross that line faster than your group's running total just dropped.",
         right: "Yes — thirty-five. Below that, we act. No deliberation, no observation, just rewarm.",
       },
     },
@@ -86,7 +86,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Heatstroke threshold — also the answer to life, the universe, and everything, minus two.",
       answers: ['40', '40°c', '40c', 'forty'],
       roasts: {
-        wrong: "For those of you who missed forty — heatstroke threshold. Above forty and organ damage starts fast. The 2021 BC heat dome killed at exactly that number.",
+        wrong: "Whatever number you put in — it wasn't forty, and forty is exactly where the kidneys file their resignation letter. Above forty, organ damage doesn't waltz, it sprints. The BC heat dome killed at that number while people were waiting for someone else to act. Don't be the someone else.",
         right: "Yes — forty. Above that, organ damage is rapid. Cool, hydrate, escalate.",
       },
     },
@@ -96,7 +96,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "What DETERMINES whether someone can act on a heat advisory.",
       answers: ['determinants', 'determinant'],
       roasts: {
-        wrong: "For those of you who missed determinants — money, housing, support. They DETERMINE who can act on the heat advisory and who can't. Health doesn't happen in a vacuum; it happens in apartments without AC.",
+        wrong: "For those of you who didn't type determinants — health does NOT happen in a vacuum. It happens in a fourth-floor walk-up with no AC, on a fixed pension, with no ride to the cooling centre. Income is clinical. Housing is clinical. If you ignore the determinants, you're not nursing — you're just journaling.",
         right: "Yes — determinants. Income is clinical. Housing is clinical. Isolation is clinical. We work the whole picture.",
       },
     },
@@ -106,7 +106,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Sister of racism and sexism — but discriminates on age.",
       answers: ['ageism'],
       roasts: {
-        wrong: "For those of you who missed ageism — sister of racism, sexism. It hides in 'they probably aren't interested' and 'she's just confused.' Spoiler: they are, and she isn't.",
+        wrong: "Whatever you typed there — wasn't ageism. The unloved sibling of racism and sexism. It hides in oh she's just confused and they probably aren't interested. Spoiler: she isn't, and they are. If you missed this word, you ARE the bias. Catch it in yourself first.",
         right: "Yes — ageism. The bias that makes us skip the question we should always ask. Catch it in yourself first.",
       },
     },
@@ -116,18 +116,18 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "Self-rule. The patient is the captain.",
       answers: ['autonomy'],
       roasts: {
-        wrong: "For those of you who missed autonomy — patients are the captains. We're the navigators. Even when we disagree, they steer the ship. That's the deal.",
+        wrong: "For those of you who didn't get autonomy — the patient is the captain. You are the navigator with the binder. Even when you disagree, even when it stresses you out, even when you swear under your mask — they steer the ship. That's nursing. That's the deal. Sign here.",
         right: "Yes — autonomy. The patient's call, full stop. We inform; they decide.",
       },
     },
     {
       id: 'q11',
-      text: "What ONE word names the COMMUNITY-LEVEL nursing intervention before a heat warning hits — the brief visit or call to assess a vulnerable older adult's preparedness?",
-      hint: "Two words become one — see how someone is doing. ('______-in')",
-      answers: ['wellness', 'check-in', 'checkin', 'check', 'wellness-check'],
+      text: "What hyphenated word names the COMMUNITY-LEVEL nursing intervention BEFORE a heat warning hits — the brief visit or call to see how a vulnerable older adult is doing?",
+      hint: "How are you doing, Margaret? — said proactively, before the crisis. ('check-___')",
+      answers: ['check-in', 'check in', 'checkin', 'wellness check', 'wellness-check', 'wellness'],
       roasts: {
-        wrong: "For those of you who missed wellness check — knock before the heat hits, not after. Proactive community visits are how we close the gap the advisory leaves open.",
-        right: "Yes — wellness check. Show up before, not after. That's the nursing footprint that prevents a body count.",
+        wrong: "Whatever you typed — wasn't check-in. You knock BEFORE the heat hits, not at the morgue. A check-in is the cheapest, lowest-tech, highest-impact thing nursing has ever invented. Five minutes, one phone call, one knock — and the body count goes down. That's the whole job.",
+        right: "Yes — check-in. Show up BEFORE, not after. That's the nursing footprint that prevents a body count.",
       },
     },
     {
@@ -136,7 +136,7 @@ You're now going to take a 12-question quick-fire quiz. Each question has a one-
       hint: "The opposite of 'noticed.'",
       answers: ['unnoticed', 'undetected', 'unseen'],
       roasts: {
-        wrong: "For those of you who missed unnoticed — older adult skin doesn't tattle the way young skin does. They don't feel it; they need to see it. Teach the visual check on their actual arm.",
+        wrong: "For those of you who didn't get unnoticed — older skin does NOT tattle. The nerves quiet down, the pain signal mellows, and the gardener finds out about the laceration when it's already infected. They don't FEEL it; they need to SEE it. Teach the eyeball, not the lecture.",
         right: "Yes — unnoticed. Demonstrate the ABCDE on Emily's hand, then watch her do it. That's how the skill stays with her.",
       },
     },
@@ -245,51 +245,51 @@ Twelve statements about HOW you would educate Emily. Vote MYTH (wrong / paternal
   // No live AI call. Audio is pre-generated at scripts/pregen-audio.js.
   roasts: {
     mvf_1: {
-      wrong: "For those of you who said FACT — you just told an eighty-three-year-old gardener to stop gardening. That's not nursing, that's grief delivery. Emancipatory practice works WITH her life, not against it. Hat, sleeves, timing, sunscreen — yes. Quitting the thing she loves — no.",
+      wrong: "Oh-ho — those of you who voted FACT just told an eighty-three-year-old gardener to stop gardening because the sun exists. That isn't nursing, that's a hostage negotiation. The sun has been there her whole life. So has she. Hat, sleeves, timing, sunscreen — yes. Cancelling Emily's joy — absolutely not.",
       right: "Yes — you don't tell Emily to stop gardening. You work with her routine. Sun protection, not life subtraction.",
     },
     mvf_2: {
-      wrong: "For those of you who said MYTH — the epidermis really does thin, collagen really does decrease, subcutaneous fat really does drop. That's why Emily bruises and tears easier. Knowing this helps her see what we see, not panic.",
+      wrong: "MYTH? Really? The epidermis literally thins, the collagen literally drops, the subcutaneous fat literally packs up and leaves. Emily isn't imagining the bruises. She's not being dramatic. Her dermis filed for early retirement and you said no it didn't. Read the chapter. With your eyes.",
       right: "Yes — thinning skin, less fat, more fragile. Use the knowledge to inform Emily, not scare her.",
     },
     mvf_3: {
-      wrong: "For those of you who said FACT — older skin heals SLOWER, period. Loss of stem cells, fewer fibroblasts, thinner dermis. Knowing this means Emily takes a small cut seriously without spiraling. Informed is not the same as afraid.",
+      wrong: "FACT?? You just decided that an eighty-three-year-old heals at the same speed as a teenager. The fibroblasts have left the building. The stem cells are on vacation. A papercut Emily ignores is your problem in two weeks. Slower healing IS the answer. Tell her so she doesn't shrug off the small stuff.",
       right: "Yes — older skin heals slower. Tell Emily so she takes a small cut seriously. Informed is not afraid.",
     },
     mvf_4: {
-      wrong: "For those of you who said MYTH — going straight to wear SPF fifty before asking what Emily already does turns a partnership into a lecture. Start where she is. That's the whole game.",
+      wrong: "Whoever voted MYTH on this — you walked into Emily's appointment and started lecturing about SPF before asking if she even uses sunscreen. That's not teaching, that's a podcast. Ask first. Then teach. That's the entire emancipatory game in one sentence.",
       right: "Yes — start where she is. The opening question is more powerful than the closing recommendation.",
     },
     mvf_5: {
-      wrong: "For those of you who said FACT — sunscreen ALONE for a four-hour-a-day gardener? You've turned skin protection into a single point of failure. Hat. Sleeves. Timing. Sunscreen. All of it.",
+      wrong: "Voted FACT? You just bet a four-hour-a-day gardener's entire skin on a single bottle of SPF that washes off in sweat. Sunscreen alone for Emily is like a seatbelt with no airbag. Hat. Sleeves. Timing. Sunscreen. ALL of them. Layers, like a casserole.",
       right: "Yes — multimodal protection. Hat, sleeves, timing, sunscreen. And it's also more affordable on a fixed income.",
     },
     mvf_6: {
-      wrong: "For those of you who said MYTH — pamphlets stay in the drawer. Teach-back puts the skill in HER hands. Demonstrate, then watch her demonstrate. That's what transfers ownership.",
+      wrong: "MYTH? Sure — let's hand Emily a pamphlet, watch it die in a drawer next to a 2014 IKEA receipt, and call that education. Pamphlets are paper. Teach-back is muscle memory. Demonstrate. Then watch HER do it. The skill belongs in her hands, not the recycling.",
       right: "Yes — teach-back wins every time. The skill stays with her, not the system.",
     },
     mvf_7: {
-      wrong: "For those of you who said FACT — skin sensitivity DROPS with age, not increases. That's exactly why Emily needs the visual self-check. Her body may not tell her something happened. Her eyes have to.",
+      wrong: "Voting FACT here means you think skin gets MORE sensitive with age. Wild. Bold. Wrong. The nerves quiet, the pain signal fades, and Emily literally cannot feel the cut on her shin. That is exactly why we teach the visual check. Her eyes are now the smoke detector.",
       right: "Yes — sensitivity decreases. Visual self-checks compensate for what the nerves don't catch.",
     },
     mvf_8: {
-      wrong: "For those of you who said MYTH — money is a clinical determinant of skin health. The minute we ignore it, we're treating the patient on paper, not the one in front of us. Generic equivalents, community pharmacy programs — that's nursing work too.",
+      wrong: "MYTH? Then go ahead, ignore the fact that Emily can't afford the good sunscreen and pretend her skin will magically protect itself with positive thinking. Money is clinical. Pension is clinical. If you skip the budget question, you're treating a chart, not a person. Get the woman a generic.",
       right: "Yes — budget is clinical. Connect Emily to community pharmacy programs. That's nursing, not social work.",
     },
     mvf_9: {
-      wrong: "For those of you who said FACT — reassure-and-revisit is how late-stage skin cancer happens. New, different, evolving spot equals referral. Today. Not next April.",
+      wrong: "Voting FACT means you just told an eighty-three-year-old with an evolving spot we'll see it next April. Congratulations — you've invented a stage three melanoma. New shape, new colour, new growth equals dermatology TODAY. Not next year. Not next month. Today.",
       right: "Yes — refer today. An ABCDE evolving spot doesn't wait for the next annual.",
     },
     mvf_10: {
-      wrong: "For those of you who said MYTH — I'm fine, look at me deserves respect. So does the new mole on her hand. Emancipatory practice holds BOTH. Her experience AND the clinical reality.",
+      wrong: "MYTH? So Emily says I'm fine, look at me and you immediately go nope, you're not? That's not nursing, that's argumentative cosplay. Her experience is real. AND the new mole is real. Hold both. That's the whole point of relational practice — both can be true at once.",
       right: "Yes — hold both. Her self-knowledge and the new spot. Both can be true.",
     },
     mvf_11: {
-      wrong: "For those of you who said MYTH — vaccinations aren't optional add-ons in geriatric care. Cough reflex is weaker, aspiration is real. Flu and pneumococcal are core prevention.",
+      wrong: "Voted MYTH on this one? You just decided vaccines are optional for an eighty-three-year-old whose cough reflex is weaker than her wifi. Aspiration pneumonia is a thing. Flu kills older adults. Pneumococcal kills older adults. Get them BOTH. This is core prevention, not a side quest.",
       right: "Yes — flu and pneumococcal are core. Cough reflex doesn't get stronger with time.",
     },
     mvf_12: {
-      wrong: "For those of you who said FACT — opportunistic skin assessment is how stage four pressure injuries happen. Routine, head-to-toe is the standard. If you can't see it, you can't stage it.",
+      wrong: "FACT?? So you'll only check Emily's skin if something looks dramatically wrong on the way in? Cool, cool — that's how stage four pressure injuries are born. Head-to-toe. Every visit. Systematic. If you don't look, you can't see, and if you can't see, you can't stage. Do the work.",
       right: "Yes — systematic, head-to-toe. Pressure injuries don't announce themselves.",
     },
   },
