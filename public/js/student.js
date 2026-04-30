@@ -30,12 +30,10 @@ const storedGroup = localStorage.getItem('nur3035_group') || '';
 nameInput.value = storedName;
 groupInput.value = storedGroup;
 
-/* ─── Numbered group selector grid (12 groups) ────────────── */
+/* ─── Numbered group selector grid (12 groups, no capacity cap) ── */
 const GROUP_GRID = $('groupGrid');
-const GROUP_CAP = (n) => (n <= 10 ? 3 : 2); // Groups 1-10 cap at 3, 11-12 at 2
-let groupCounts = {}; // "Group N" → count of active members
-// Only restore selectedGroup if it matches the new "Group N" format,
-// otherwise clear stale (free-text "Table 1" style) values from localStorage.
+let groupCounts = {}; // "Group N" → count of active members (display only)
+// Only restore selectedGroup if it matches the new "Group N" format.
 let selectedGroup = /^Group ([1-9]|1[0-2])$/.test(storedGroup) ? storedGroup : null;
 
 function renderGroupGrid() {
@@ -44,24 +42,19 @@ function renderGroupGrid() {
   for (let n = 1; n <= 12; n++) {
     const label = `Group ${n}`;
     const count = groupCounts[label] || 0;
-    const cap = GROUP_CAP(n);
-    const isFull = count >= cap;
     const isSelected = selectedGroup === label;
-    // If THIS user is in that group already, count includes them — don't
-    // mark as "full" against themselves.
-    const fullCls = isFull && !isSelected ? 'full' : '';
     const selCls = isSelected ? 'selected' : '';
+    const countLabel = count === 0 ? 'empty' : `${count} here`;
     html += `
-      <button type="button" class="group-btn ${selCls} ${fullCls}" data-group="${label}" ${isFull && !isSelected ? 'disabled' : ''}>
+      <button type="button" class="group-btn ${selCls}" data-group="${label}">
         <span class="gn-num">${n}</span>
-        <span class="gn-count">${isFull ? 'FULL' : `${count}/${cap}`}</span>
+        <span class="gn-count">${countLabel}</span>
       </button>
     `;
   }
   GROUP_GRID.innerHTML = html;
   GROUP_GRID.querySelectorAll('.group-btn').forEach((btn) => {
     btn.onclick = () => {
-      if (btn.classList.contains('full')) return;
       selectedGroup = btn.dataset.group;
       groupInput.value = selectedGroup;
       renderGroupGrid();

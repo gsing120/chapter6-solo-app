@@ -46,14 +46,6 @@
   color: var(--teal);
 }
 .group-btn.selected .gn-count { color: var(--teal); }
-.group-btn.full {
-  opacity: 0.4;
-  cursor: not-allowed;
-  background: rgba(255, 60, 172, 0.06);
-  border-color: rgba(255, 60, 172, 0.3);
-}
-.group-btn.full .gn-count { color: var(--magenta); }
-.group-btn.full:hover { background: rgba(255, 60, 172, 0.06); border-color: rgba(255, 60, 172, 0.3); }
 
 /* ─── Persistent group-rank pill ───────────────────────────── */
 .group-rank-pill {
