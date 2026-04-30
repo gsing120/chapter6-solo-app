@@ -2,6 +2,59 @@
    Student view — mobile-first
    ═══════════════════════════════════════════════════════════ */
 
+/* ─── Numbered group selector grid ─────────────────────────── */
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+.group-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 4px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  min-height: 70px;
+}
+.group-btn:active { transform: scale(0.96); }
+.group-btn:hover { background: rgba(0, 245, 212, 0.08); border-color: var(--teal); }
+.group-btn .gn-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.group-btn .gn-count {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  letter-spacing: 0.04em;
+}
+.group-btn.selected {
+  background: rgba(0, 245, 212, 0.18);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.group-btn.selected .gn-count { color: var(--teal); }
+.group-btn.full {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(255, 60, 172, 0.06);
+  border-color: rgba(255, 60, 172, 0.3);
+}
+.group-btn.full .gn-count { color: var(--magenta); }
+.group-btn.full:hover { background: rgba(255, 60, 172, 0.06); border-color: rgba(255, 60, 172, 0.3); }
+
 /* ─── Persistent group-rank pill ───────────────────────────── */
 .group-rank-pill {
   display: flex;

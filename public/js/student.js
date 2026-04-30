@@ -30,6 +30,46 @@ const storedGroup = localStorage.getItem('nur3035_group') || '';
 nameInput.value = storedName;
 groupInput.value = storedGroup;
 
+/* ─── Numbered group selector grid (12 groups) ────────────── */
+const GROUP_GRID = $('groupGrid');
+const GROUP_CAP = (n) => (n <= 10 ? 3 : 2); // Groups 1-10 cap at 3, 11-12 at 2
+let groupCounts = {}; // "Group N" → count of active members
+// Only restore selectedGroup if it matches the new "Group N" format,
+// otherwise clear stale (free-text "Table 1" style) values from localStorage.
+let selectedGroup = /^Group ([1-9]|1[0-2])$/.test(storedGroup) ? storedGroup : null;
+
+function renderGroupGrid() {
+  if (!GROUP_GRID) return;
+  let html = '';
+  for (let n = 1; n <= 12; n++) {
+    const label = `Group ${n}`;
+    const count = groupCounts[label] || 0;
+    const cap = GROUP_CAP(n);
+    const isFull = count >= cap;
+    const isSelected = selectedGroup === label;
+    // If THIS user is in that group already, count includes them — don't
+    // mark as "full" against themselves.
+    const fullCls = isFull && !isSelected ? 'full' : '';
+    const selCls = isSelected ? 'selected' : '';
+    html += `
+      <button type="button" class="group-btn ${selCls} ${fullCls}" data-group="${label}" ${isFull && !isSelected ? 'disabled' : ''}>
+        <span class="gn-num">${n}</span>
+        <span class="gn-count">${isFull ? 'FULL' : `${count}/${cap}`}</span>
+      </button>
+    `;
+  }
+  GROUP_GRID.innerHTML = html;
+  GROUP_GRID.querySelectorAll('.group-btn').forEach((btn) => {
+    btn.onclick = () => {
+      if (btn.classList.contains('full')) return;
+      selectedGroup = btn.dataset.group;
+      groupInput.value = selectedGroup;
+      renderGroupGrid();
+    };
+  });
+}
+renderGroupGrid();
+
 let me = { clientId: null, name: null, group: null };
 let currentState = null;
 let timer = { label: null, seconds: 0, total: 0 };
@@ -53,17 +93,20 @@ socket.on('connect', () => {
 
 btnJoin.onclick = () => {
   const name = nameInput.value.trim();
-  const group = groupInput.value.trim() || name;
   if (name.length < 2) {
     nameInput.focus();
     return;
   }
+  if (!selectedGroup) {
+    alert('Please pick a group number.');
+    return;
+  }
   localStorage.setItem('nur3035_name', name);
-  localStorage.setItem('nur3035_group', group);
+  localStorage.setItem('nur3035_group', selectedGroup);
   socket.emit('student:join', {
     clientId: getClientId(),
     name,
-    group,
+    group: selectedGroup,
   });
 };
 
@@ -202,6 +245,15 @@ function renderGroupRankWidget() {
 
 socket.on('state:update', (s) => {
   currentState = s;
+  // Refresh group-grid counts (lobby view) from server's broadcast state
+  if (s && s.groups) {
+    const next = {};
+    for (const [g, members] of Object.entries(s.groups)) {
+      next[g] = Array.isArray(members) ? members.length : 0;
+    }
+    groupCounts = next;
+    if (!me.name) renderGroupGrid(); // only update grid while still on lobby
+  }
   if (me.name) render();
 });
 

@@ -29,14 +29,15 @@
   <div id="joinScreen" class="glass join-card">
     <span class="seg-badge seg-1">Welcome</span>
     <h1>Chapter 6 <br>Interactive Classroom</h1>
-    <p>Enter your name and group. Type the same group name as your tablemates — anyone matching will be grouped together. Solo? Use your own name.</p>
+    <p>Enter your name and pick your group number. Tablemates choose the same number — that's it. Groups 1–10 hold 3 students each, Groups 11–12 hold 2.</p>
     <div>
       <label for="nameInput">Your name</label>
       <input id="nameInput" type="text" placeholder="e.g. Alex" autocomplete="off" maxlength="40">
     </div>
     <div>
-      <label for="groupInput">Group name</label>
-      <input id="groupInput" type="text" placeholder="e.g. Table 1" autocomplete="off" maxlength="40">
+      <label>Group number</label>
+      <div id="groupGrid" class="group-grid"></div>
+      <input id="groupInput" type="hidden">
     </div>
     <button id="btnJoin" class="btn btn-xl btn-block">Join</button>
   </div>
